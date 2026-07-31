@@ -51,8 +51,12 @@ To run one file while iterating:
 
 ```bash
 npx tsc -p tsconfig.test.json
-node --test "dist-tests/tests/claimDetector.test.js"
+node --test dist-tests/tests/claimDetector.test.js
 ```
+
+> `npm test` runs `cd dist-tests && node --test`, relying on Node's built-in test
+> discovery. Avoid glob patterns like `--test "**/*.test.js"` — those need Node 21+,
+> and CI runs Node 18.
 
 Some tests spawn real subprocesses and real CLI processes on purpose — timeouts, process
 trees, cross-process state, and hook stdin/stdout are not things a mock can prove. Those

@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test \"dist-tests/tests/**/*.test.js\"",
+    "test": "cd dist-tests && node --test",
     "pretest": "tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
