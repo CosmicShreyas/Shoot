@@ -13,8 +13,16 @@ name: Release
 # step (by design: it fails rather than falling back to something less safe).
 
 on:
-  # Manual only, deliberately. A release should be an explicit decision, not a
-  # side effect of pushing a tag that might have been created by accident.
+  # Publishing a GitHub Release is the single deliberate human action per release.
+  # Everything after it — build, test, publish, provenance — is automatic.
+  #
+  # Deliberately NOT `push: branches: [main]` or `workflow_run` on green CI: those
+  # would publish on every merge, which turns an irreversible action (an npm version
+  # can be deprecated but never replaced) into a side effect of ordinary work.
+  release:
+    types: [published]
+
+  # Kept for dry runs, so OIDC and packaging can be verified without publishing.
   workflow_dispatch:
     inputs:
       dry-run:
@@ -64,6 +72,35 @@ jobs:
             console.log('npm ' + v + ' supports trusted publishing.');
           "
 
+      # The version published is ALWAYS the one in package.json — `npm publish` has
+      # no way to override it. So rather than pass a version around, assert that the
+      # release tag and package.json agree, and fail loudly if they do not. Silently
+      # publishing a version different from the one the release announces would be
+      # the worst outcome here.
+      - name: Check the release tag matches package.json
+        if: ${{ github.event_name == 'release' }}
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            const tag = process.env.RELEASE_TAG ?? '';
+            const tagVersion = tag.replace(/^v/, '');
+
+            if (tagVersion === '') {
+              console.error('Release has no tag_name; cannot verify the version.');
+              process.exit(1);
+            }
+            if (tagVersion !== pkg.version) {
+              console.error('Version mismatch — refusing to publish.');
+              console.error('  release tag  : ' + tag + '  (-> ' + tagVersion + ')');
+              console.error('  package.json : ' + pkg.version);
+              console.error('Bump package.json and re-tag so the two agree.');
+              process.exit(1);
+            }
+            console.log('Publishing ' + pkg.name + '@' + pkg.version + ' from tag ' + tag);
+          "
+
       - name: Install
         run: npm ci --ignore-scripts
 
@@ -85,11 +122,26 @@ jobs:
       - name: Show what would be published
         run: npm pack --dry-run
 
+      # A published GitHub Release always publishes for real. A manual dispatch
+      # publishes only when dry-run was explicitly unchecked, so the accident-prone
+      # path defaults to safe.
       - name: Publish (dry run)
-        if: ${{ inputs.dry-run }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
         run: npm publish --provenance --access public --dry-run
 
       - name: Publish
-        if: ${{ !inputs.dry-run }}
+        if: ${{ github.event_name == 'release' || !inputs.dry-run }}
         # No NODE_AUTH_TOKEN / NPM_TOKEN. Authentication is the OIDC identity.
         run: npm publish --provenance --access public
+
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            const dispatched = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
+            const dry = dispatched && process.env.DRY_RUN === 'true';
+            console.log((dry ? 'DRY RUN — nothing published. ' : 'Published ') + pkg.name + '@' + pkg.version);
+          " >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
