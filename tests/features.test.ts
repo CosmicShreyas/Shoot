@@ -386,9 +386,13 @@ test('CLI: stats reports real counts from a real history file', () => {
 
     const r = runCLI(['stats'], dir);
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /verifications\s+3/);
-    assert.match(r.stdout, /passed\s+1/);
-    assert.match(r.stdout, /blocked\s+2/);
+
+    // The dashboard header carries the totals; the breakdown carries per-outcome
+    // counts. Both must reflect the real file.
+    assert.match(r.stdout, /total\s+3/);
+    assert.match(r.stdout, /passed\s+█+\s+1/, 'breakdown row for passed');
+    assert.match(r.stdout, /blocked\s+█+\s+2/, 'breakdown row for blocked');
+    assert.match(r.stdout, /pass rate\s+33%/, '1 of 3 verified');
     assert.match(r.stdout, /Caught 2 completion claims/);
   });
 });
