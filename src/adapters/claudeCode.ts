@@ -87,13 +87,17 @@ export const claudeCodeAdapter: PlatformAdapter = {
       }
 
       case 'block': {
+        // AGENT CHANNEL: `reason` is already plain ASCII (sanitized in
+        // buildBlockReason). Emitted verbatim.
         const out: ClaudeCodeOutput = { decision: 'block', reason: verdict.reason };
-        // The terminal echo is the reason's first line — the framing, not the
-        // whole diagnostic dump.
-        const firstLine = verdict.reason.split('\n')[0] ?? '';
+
+        // HUMAN CHANNEL: the terminal echo is the framing line only — not the whole
+        // diagnostic dump. `terminalNotice` carries the voiced, decorated version;
+        // fall back to the reason's first line if a verdict omits it.
+        const line = verdict.terminalNotice ?? verdict.reason.split('\n')[0] ?? '';
         return {
           stdout: `${JSON.stringify(out)}\n`,
-          stderr: `${firstLine}\n`,
+          stderr: `${line}\n`,
           exitCode: 0,
         };
       }

@@ -24,6 +24,7 @@ import {
   type RunOptions,
   type VerificationReport,
 } from './verificationRunner.js';
+import { toAgentText } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 import type { HookInput, Verdict } from '../adapters/types.js';
 import type { ClaimResult } from './claimDetector.js';
@@ -48,16 +49,24 @@ export interface DecideOptions {
 }
 
 /**
- * Build the block reason: mascot framing line, then verbatim command output.
- * Personality never touches the diagnostic data.
+ * Build the block reason — the AGENT CHANNEL.
+ *
+ * Per the two-channel rule in colors.ts, this is read by a model via a structured
+ * JSON field, so it is plain 7-bit ASCII: no color, no panda, no Unicode
+ * decoration. The wording is identical to the human channel; only decoration is
+ * stripped, by `toAgentText` at the end.
+ *
+ * Structure is unchanged: framing line first, then verbatim command output.
  */
 export function buildBlockReason(claim: ClaimResult, report: VerificationReport): string {
   const quoted = claim.matches[0]?.text;
 
-  const lines: string[] = [
+  // Render the framing line with no palette, then sanitize the whole thing.
+  const framing = messages.withoutColor(() =>
     quoted !== undefined ? messages.blocked(quoted) : messages.blockedNoQuote(),
-    '',
-  ];
+  );
+
+  const lines: string[] = [framing, ''];
 
   for (const f of failures(report)) {
     const why =
@@ -73,7 +82,9 @@ export function buildBlockReason(claim: ClaimResult, report: VerificationReport)
   lines.push(
     'Fix the underlying problem and re-run the checks. Do not report success until they pass.',
   );
-  return lines.join('\n');
+
+  // Single enforcement point for the agent channel.
+  return toAgentText(lines.join('\n'));
 }
 
 /** The pass-path receipt. Canonical mascot line — this is what users see. */
@@ -233,8 +244,16 @@ export async function decide(
   }
 
   log(input, options, 'blocked', report, { ...(claimText !== undefined ? { claimText } : {}) });
+
+  // Two channels, built separately: `reason` is plain ASCII for the model,
+  // `terminalNotice` is the voiced line for the human's terminal.
+  const quoted = claim.matches[0]?.text;
   return {
-    verdict: { kind: 'block', reason: buildBlockReason(claim, report) },
+    verdict: {
+      kind: 'block',
+      reason: buildBlockReason(claim, report),
+      terminalNotice: quoted !== undefined ? messages.blocked(quoted) : messages.blockedNoQuote(),
+    },
     claim,
     report,
   };

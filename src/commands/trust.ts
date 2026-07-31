@@ -2,19 +2,24 @@
  * `shoot trust` — review and approve the configured check commands.
  *
  * Shows a plain diff of what changed, then asks for explicit confirmation before
- * recording the new commands as approved. The diff is deliberately unstyled: this
- * is the moment a user decides whether to execute something, so the commands
- * themselves should be the most legible thing on screen.
+ * recording the new commands as approved.
+ *
+ * HUMAN CHANNEL. The diff follows the familiar git shape — red `-` for what was
+ * approved, green `+` for what the config now says — because this is the moment a
+ * user decides whether to execute something, and the commands themselves need to be
+ * the most legible thing on screen.
  */
 
 import { configExists, hasAnyCheck, loadConfig } from '../core/config.js';
 import { checkTrust, formatChanges, readTrust, writeTrust } from '../core/trust.js';
 import { closePrompts, confirm } from '../core/prompt.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 export async function trust(argv: string[]): Promise<number> {
   const cwd = process.cwd();
   const force = argv.includes('--yes') || argv.includes('-y');
+  const palette = stdoutPalette();
 
   if (!configExists(cwd)) {
     process.stderr.write(`${messages.noConfigHere()}\n`);
@@ -47,11 +52,13 @@ export async function trust(argv: string[]): Promise<number> {
   process.stdout.write(`\n${messages.trustReviewHeading()}\n\n`);
 
   if (status.status === 'changed') {
-    process.stdout.write(`${formatChanges(status.changes)}\n`);
+    process.stdout.write(`${formatChanges(status.changes, palette)}\n`);
   } else {
     // No prior record — show the full set rather than a diff against nothing.
     for (const [name, command] of Object.entries(config.checks)) {
-      if (command.trim() !== '') process.stdout.write(`  + ${name.padEnd(10)} ${command}\n`);
+      if (command.trim() !== '') {
+        process.stdout.write(palette.ok(`  + ${name.padEnd(10)} ${command}`) + '\n');
+      }
     }
   }
 

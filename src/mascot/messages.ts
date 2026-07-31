@@ -14,7 +14,44 @@
  *    function from this file — never a plain paraphrase alongside a voiced line.
  */
 
+import { plain, terminalPalette, type Palette } from './colors.js';
+
 export const PANDA = '🐼';
+
+/**
+ * Which palette the voiced helpers use.
+ *
+ * Resolved lazily on first use rather than at module load, so a test (or a caller)
+ * can set NO_COLOR before anything is rendered. Keyed to stderr, which is where
+ * every voiced line goes.
+ */
+let activePalette: Palette | undefined;
+
+function pal(): Palette {
+  activePalette ??= terminalPalette();
+  return activePalette;
+}
+
+/**
+ * Force a palette. Two callers:
+ *   - tests, to assert both colored and plain output deterministically
+ *   - the hook, which must render PLAIN for anything embedded in stdout JSON,
+ *     because an escape code inside the payload would corrupt what the host parses
+ */
+export function setPalette(palette: Palette): void {
+  activePalette = palette;
+}
+
+/** Render voiced text with no color at all, regardless of the active palette. */
+export function withoutColor<T>(fn: () => T): T {
+  const previous = activePalette;
+  activePalette = plain;
+  try {
+    return fn();
+  } finally {
+    activePalette = previous;
+  }
+}
 
 /** Shown once after a successful `shoot init`. */
 export const ART = String.raw`
@@ -25,7 +62,20 @@ export const ART = String.raw`
           |ǂ|            verify before you grow
 `;
 
-export const prefix = (body: string): string => `${PANDA} Shoot: ${body}`;
+/**
+ * The mascot framing line. Bold, because it is the one line that must be findable
+ * in a wall of test output — the diagnostics below it stay unstyled.
+ */
+export const prefix = (body: string): string => pal().strong(`${PANDA} Shoot: ${body}`);
+
+/** Framing line for a good outcome. */
+const prefixOk = (body: string): string => pal().ok(pal().strong(`${PANDA} Shoot: ${body}`));
+
+/** Framing line for a failure or block. */
+const prefixBad = (body: string): string => pal().bad(pal().strong(`${PANDA} Shoot: ${body}`));
+
+/** Framing line for a warning or advisory. */
+const prefixWarn = (body: string): string => pal().warn(pal().strong(`${PANDA} Shoot: ${body}`));
 
 // ---------------------------------------------------------------------------
 // Hook decisions — these are what a real user actually sees, via systemMessage
@@ -35,25 +85,25 @@ export const prefix = (body: string): string => `${PANDA} Shoot: ${body}`;
 
 /** Checks ran and passed. Goes out as the pass-path systemMessage. */
 export const success = (checked: string): string =>
-  prefix(`Nice work — ${checked}. Cleared to grow.`);
+  prefixOk(`Nice work — ${checked}. Cleared to grow.`);
 
 /**
  * Framing line for a block, quoting the claim back. The real command output is
  * appended after this by buildBlockReason — never mixed into it.
  */
 export const blocked = (quotedClaim: string): string =>
-  prefix(`Not yet. You said "${quotedClaim}" — it isn't true yet. Here's what broke:`);
+  prefixBad(`Not yet. You said "${quotedClaim}" — it isn't true yet. Here's what broke:`);
 
 /** Same, when there's no clean phrase to quote. */
 export const blockedNoQuote = (): string =>
-  prefix("Not yet. That reads like a completion claim, but the checks disagree. Here's what broke:");
+  prefixBad("Not yet. That reads like a completion claim, but the checks disagree. Here's what broke:");
 
 /**
  * Circuit breaker stood down. Goes out as systemMessage — must state plainly
  * that the checks still do NOT pass, so standing down is never mistaken for a pass.
  */
 export const breakerTripped = (blocks: number, checked: string): string =>
-  prefix(
+  prefixWarn(
     `I've paused this ${blocks} times now for the same failure (${checked}). ` +
       "Something's genuinely stuck, so I'm letting this through — but the checks " +
       'still do NOT pass, and a human should look at it.',
@@ -61,13 +111,13 @@ export const breakerTripped = (blocks: number, checked: string): string =>
 
 /** Warn mode: checks failed, but blocking is disabled. */
 export const warnOnly = (checked: string): string =>
-  prefix(
+  prefixWarn(
     `Heads up — ${checked}. Not blocking (warn mode), but this isn't done.`,
   );
 
 /** The hook's cwd doesn't exist, so nothing could be verified. */
 export const skippedBadCwd = (cwd: string): string =>
-  prefix(
+  prefixWarn(
     `I couldn't find the project directory ("${cwd}"), so I skipped verification — ` +
       'nothing was verified. Letting this through, but treat it as unchecked. ' +
       'Run `shoot verify` to check this project manually.',
@@ -79,7 +129,7 @@ export const skippedBadCwd = (cwd: string): string =>
  * a security consequence.
  */
 export const configChanged = (): string =>
-  prefix(
+  prefixWarn(
     "⚠️  Your .shoot.config.json commands changed since you last approved them, so I " +
       "skipped verification rather than run something you haven't seen. Nothing was " +
       'verified. Run `shoot trust` to review the change and approve it.',
@@ -87,7 +137,7 @@ export const configChanged = (): string =>
 
 /** No trust record exists for the configured commands. */
 export const configUntrusted = (): string =>
-  prefix(
+  prefixWarn(
     "⚠️  I don't have a record of you approving these check commands, so I skipped " +
       'verification rather than run them unseen. Nothing was verified. Run ' +
       '`shoot trust` to review and approve them.',
@@ -99,11 +149,11 @@ export const noChecksConfigured = (): string =>
 
 /** The hook itself malfunctioned. Never silent: a broken hook must not look clean. */
 export const internalError = (detail: string): string =>
-  prefix(`internal error, allowing the stop — ${detail}`);
+  prefixWarn(`internal error, allowing the stop — ${detail}`);
 
 /** The generated shim could not load Shoot at all. */
 export const shimLoadFailed = (detail: string): string =>
-  prefix(`hook could not run, allowing the stop — ${detail}`);
+  prefixWarn(`hook could not run, allowing the stop — ${detail}`);
 
 // ---------------------------------------------------------------------------
 // CLI command output
@@ -146,17 +196,17 @@ export const initCancelled = (): string => prefix('No changes made.');
 
 export const verifyRunning = (): string => prefix('Running your checks...');
 
-export const verifyPassed = (): string => prefix('Everything checks out. Cleared to grow.');
+export const verifyPassed = (): string => prefixOk('Everything checks out. Cleared to grow.');
 
 export const verifyFailed = (count: number): string =>
-  prefix(`${count} ${count === 1 ? 'check' : 'checks'} did not pass. Details above.`);
+  prefixBad(`${count} ${count === 1 ? 'check' : 'checks'} did not pass. Details above.`);
 
 export const noConfigHere = (): string =>
   prefix('No .shoot.config.json here. Run `shoot init` first.');
 
 export const statusHeading = (): string => prefix('Status');
 
-export const statusHealthy = (): string => prefix("You're all wired up. I'll be watching.");
+export const statusHealthy = (): string => prefixOk("You're all wired up. I'll be watching.");
 
 export const statusNotInstalled = (): string =>
   prefix('Not installed here. Run `shoot init` to set it up.');
@@ -167,7 +217,7 @@ export const statusNoHooks = (): string =>
 export const statusBadSettings = (): string => prefix('That settings file is not valid JSON.');
 
 export const brokenRegistration = (): string =>
-  prefix(
+  prefixWarn(
     'A hook is registered but its script is missing, so nothing is being verified. ' +
       'Run `shoot init` to repair it.',
   );
@@ -181,10 +231,10 @@ export const trustWarning = (): string =>
   '  pull request you did not write, read it carefully.';
 
 export const trustApproved = (): string =>
-  prefix('Approved. Verification is active again for these commands.');
+  prefixOk('Approved. Verification is active again for these commands.');
 
 export const trustDeclined = (): string =>
-  prefix('Not approved — nothing changed, and verification stays skipped until you approve.');
+  prefixWarn('Not approved — nothing changed, and verification stays skipped until you approve.');
 
 export const trustAlreadyTrusted = (): string =>
   prefix('These commands are already approved:');
@@ -194,15 +244,15 @@ export const trustNothingToApprove = (): string =>
 
 export const doctorHeading = (): string => prefix("Let's check your setup.");
 
-export const doctorHealthy = (): string => prefix('Everything looks healthy. Nothing to fix.');
+export const doctorHealthy = (): string => prefixOk('Everything looks healthy. Nothing to fix.');
 
 export const doctorWarnings = (count: number): string =>
-  prefix(
+  prefixWarn(
     `No blockers, but ${count} thing${count === 1 ? '' : 's'} worth a look (marked warn above).`,
   );
 
 export const doctorFailed = (count: number): string =>
-  prefix(
+  prefixBad(
     `${count} problem${count === 1 ? '' : 's'} will stop verification from working. ` +
       'The → lines above say how to fix each one.',
   );

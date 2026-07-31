@@ -7,6 +7,7 @@
  */
 
 import { configExists, hasAnyCheck, loadConfig } from '../core/config.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import {
   failures,
   nothingConfigured,
@@ -48,16 +49,27 @@ export async function verify(_argv: string[]): Promise<number> {
     return 0;
   }
 
+  const palette = stdoutPalette();
   process.stdout.write(`\n${messages.verifyRunning()}\n\n`);
 
   const report = await runChecksFromConfig(config, cwd);
 
-  // Per-check summary lines.
+  // Per-check summary lines. HUMAN CHANNEL: status coloured, name emphasised,
+  // timing dimmed as secondary metadata.
   for (const result of report.results) {
     if (result.status === 'skipped') continue;
-    const label = statusLabel(result).padEnd(8);
+
+    const raw = statusLabel(result);
+    const tint =
+      result.status === 'passed'
+        ? palette.ok
+        : result.status === 'timedOut'
+          ? palette.warn
+          : palette.bad;
+
     process.stdout.write(
-      `  ${label} ${result.name.padEnd(10)} ${formatDuration(result.durationMs)}\n`,
+      `  ${tint(raw.padEnd(8))} ${palette.accent(result.name.padEnd(10))} ` +
+        `${palette.faint(formatDuration(result.durationMs))}\n`,
     );
   }
 
@@ -66,7 +78,11 @@ export async function verify(_argv: string[]): Promise<number> {
     return 0;
   }
 
-  // Full diagnostic output for anything that failed — plain and unstyled.
+  // Full diagnostic output for anything that failed.
+  //
+  // The `---` header lines are Shoot's framing and get colour; the command output
+  // below them stays completely unstyled, per the rule in messages.ts — diagnostic
+  // data must remain greppable and byte-identical to what the tool emitted.
   const failed = failures(report);
   if (failed.length > 0) {
     for (const result of failed) {
@@ -74,8 +90,10 @@ export async function verify(_argv: string[]): Promise<number> {
         result.status === 'timedOut'
           ? `timed out after ${formatDuration(result.durationMs)}`
           : `exited ${result.exitCode ?? 'unknown'}`;
-      process.stdout.write(`\n--- ${result.name}: ${why}\n`);
-      process.stdout.write(`--- command: ${result.command}\n`);
+      const tint = result.status === 'timedOut' ? palette.warn : palette.bad;
+
+      process.stdout.write(`\n${tint(`--- ${result.name}: ${why}`)}\n`);
+      process.stdout.write(`${palette.faint(`--- command: ${result.command}`)}\n`);
       const body = result.output.trimEnd();
       process.stdout.write(`${body === '' ? '(no output captured)' : body}\n`);
     }

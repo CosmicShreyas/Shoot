@@ -28,6 +28,7 @@ import {
 import { closePrompts, confirm } from '../core/prompt.js';
 import { CODEX_SHIM_RELATIVE_PATH, SHIM_RELATIVE_PATH } from '../core/shim.js';
 import { STATE_DIR_NAME } from '../core/circuitBreaker.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 export async function uninstall(argv: string[]): Promise<number> {
@@ -59,13 +60,19 @@ export async function uninstall(argv: string[]): Promise<number> {
     return 0;
   }
 
+  // HUMAN CHANNEL: what's going away is red, what's being kept is green — the
+  // distinction that actually matters when someone is about to delete things.
+  const palette = stdoutPalette();
+
   process.stdout.write(`\n${messages.uninstallPlan()}\n\n`);
-  for (const t of targets) process.stdout.write(`    ${t}\n`);
+  for (const t of targets) process.stdout.write(palette.bad(`    - ${t}`) + '\n');
   if (hasRegistration) {
-    process.stdout.write(`    Shoot's hook entries in ${settingsPath(cwd)}\n`);
+    process.stdout.write(
+      palette.bad(`    - Shoot's hook entries in `) + palette.faint(settingsPath(cwd)) + '\n',
+    );
   }
   if (preserved > 0) {
-    process.stdout.write(`\n  ${messages.uninstallPreserving(preserved)}\n`);
+    process.stdout.write(`\n  ${palette.ok(messages.uninstallPreserving(preserved))}\n`);
   }
   process.stdout.write('\n');
 

@@ -44,10 +44,21 @@ export interface HookInput {
 export type Verdict =
   /** Say nothing, allow the turn to end. */
   | { kind: 'allowSilent' }
-  /** Allow the turn to end, but show the user a message. */
+  /**
+   * Allow the turn to end, but show the user a message.
+   * HUMAN CHANNEL: `notice` may carry color, emoji, and decoration.
+   */
   | { kind: 'allowWithNotice'; notice: string }
-  /** Do not let the turn end; hand this text back to the agent. */
-  | { kind: 'block'; reason: string };
+  /**
+   * Do not let the turn end; hand this text back to the agent.
+   *
+   * `reason` is the AGENT CHANNEL — guaranteed plain 7-bit ASCII by
+   * `buildBlockReason`. `terminalNotice` is the HUMAN CHANNEL echo of the same
+   * decision, voiced and decorated, for the user's terminal. Two fields because
+   * the two audiences have genuinely different requirements; see the two-channel
+   * rule in `mascot/colors.ts`.
+   */
+  | { kind: 'block'; reason: string; terminalNotice?: string };
 
 /** A fully-formed response, ready to write. */
 export interface AdapterResponse {

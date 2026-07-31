@@ -19,6 +19,7 @@ import { peek } from '../src/core/circuitBreaker.js';
 import type { VerificationReport } from '../src/core/verificationRunner.js';
 import type { DecideOptions } from '../src/core/decide.js';
 import type { AdapterResponse } from '../src/adapters/types.js';
+import { isAsciiOnly, toAgentText } from '../src/mascot/colors.js';
 import * as messages from '../src/mascot/messages.js';
 
 /**
@@ -336,50 +337,59 @@ test('every non-silent hook decision speaks in the mascot voice', async () => {
     ];
 
     for (const decision of cases) {
-      const shown = decision.output.systemMessage ?? decision.output.reason ?? '';
-      assert.ok(shown !== '', 'a non-silent decision must say something');
+      // The HUMAN channel is systemMessage. The block path's `reason` is the AGENT
+      // channel and is deliberately undecorated, so it's excluded here — its own
+      // contract is asserted below and in channels.test.ts.
+      const shown = decision.output.systemMessage;
+      if (shown === undefined) continue;
       assert.match(shown, /^🐼 Shoot: /, `missing mascot voice in: ${shown.slice(0, 60)}`);
+    }
+
+    // Every case must have said *something* on one channel or the other.
+    for (const decision of cases) {
+      const anything = decision.output.systemMessage ?? decision.output.reason ?? '';
+      assert.ok(anything !== '', 'a non-silent decision must say something');
     }
   });
 });
 
 // ---------------------------------------------------------------------------
-// The block reason: voiced framing, untouched diagnostics
+// The block reason is the AGENT channel: same wording, no decoration
 // ---------------------------------------------------------------------------
 
-test('the block reason opens with the canonical mascot framing line', () => {
+test('the block reason opens with the framing line, stripped to ASCII', () => {
   const claim = { claimed: true, matches: [{ id: 'tests-pass', text: 'tests pass' }] };
   const reason = buildBlockReason(claim, fakeReport(false));
 
   const firstLine = reason.split('\n')[0] ?? '';
-  assert.equal(firstLine, messages.blocked('tests pass'));
-  assert.equal(
-    firstLine,
-    '🐼 Shoot: Not yet. You said "tests pass" — it isn\'t true yet. Here\'s what broke:',
-  );
+
+  // Identical wording to the human line, minus the panda and typographic dashes —
+  // see the two-channel rule in mascot/colors.ts.
+  assert.equal(firstLine, toAgentText(messages.blocked('tests pass')));
+  assert.match(firstLine, /^Shoot: Not yet\. You said "tests pass"/);
+  assert.equal(isAsciiOnly(firstLine), true);
 });
 
 test('the block reason uses the no-quote variant when there is nothing to quote', () => {
   const reason = buildBlockReason({ claimed: true, matches: [] }, fakeReport(false));
-  assert.equal(reason.split('\n')[0], messages.blockedNoQuote());
+  assert.equal(reason.split('\n')[0], toAgentText(messages.blockedNoQuote()));
 });
 
-test('the block diagnostics stay plain — no personality in the data', () => {
+test('the block reason carries no decoration at all, framing included', () => {
   const claim = { claimed: true, matches: [{ id: 'tests-pass', text: 'tests pass' }] };
   const reason = buildBlockReason(claim, fakeReport(false));
 
-  // Exactly one voiced line: the framing. Everything after is raw.
-  const voicedLines = reason.split('\n').filter((l) => l.includes('🐼'));
-  assert.equal(voicedLines.length, 1, 'personality must not leak into diagnostics');
+  assert.equal(reason.includes('🐼'), false, 'agent channel carries no emoji');
+  assert.equal(isAsciiOnly(reason), true, 'agent channel is pure ASCII');
 
+  // The diagnostics themselves still arrive intact — that was never negotiable.
   const body = reason.split('\n').slice(1).join('\n');
   assert.match(body, /FAIL src\/auth\.test\.ts/, 'real output, verbatim');
   assert.match(body, /npm test/, 'real command');
   assert.match(body, /exit code 1/, 'real exit code');
-  assert.doesNotMatch(body, /🐼/);
 });
 
-test('the terminal echo of a block matches the reason first line', async () => {
+test('the two channels carry the same words with different decoration', async () => {
   await withTempDirAsync(async (dir) => {
     const decision = await evaluate(
       input({ cwd: dir }),
@@ -387,8 +397,14 @@ test('the terminal echo of a block matches the reason first line', async () => {
       { runChecks: failing },
     );
 
-    const firstLine = (decision.output.reason ?? '').split('\n')[0];
-    assert.equal(decision.terminalMessage, firstLine, 'one canonical wording, both channels');
+    const reasonFirst = (decision.output.reason ?? '').split('\n')[0] ?? '';
+
+    // They differ by design now: voiced for the human, ASCII for the model.
+    assert.match(decision.terminalMessage, /🐼/, 'human channel keeps the panda');
+    assert.equal(isAsciiOnly(reasonFirst), true, 'agent channel does not');
+
+    // But the wording must still be the same — no divergent paraphrase.
+    assert.equal(toAgentText(decision.terminalMessage), reasonFirst);
   });
 });
 

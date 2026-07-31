@@ -18,6 +18,7 @@ import {
   settingsPath,
   type HookEvent,
 } from '../core/settings.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 export interface StatusReport {
@@ -76,36 +77,51 @@ export function gatherStatus(cwd: string): StatusReport {
 export async function status(_argv: string[]): Promise<number> {
   const cwd = process.cwd();
   const report = gatherStatus(cwd);
+  const palette = stdoutPalette();
 
   process.stdout.write(`\n${messages.statusHeading()}\n\n`);
 
+  // HUMAN CHANNEL throughout: field names accented, values plain, units and paths
+  // dimmed as secondary metadata, states coloured by what they mean.
+  const label = (text: string, width = 10): string => palette.accent(text.padEnd(width));
+
   // Config.
   if (!report.configPresent) {
-    process.stdout.write(`  config     not found (${CONFIG_FILENAME})\n`);
+    process.stdout.write(
+      `  ${label('config')} ${palette.bad('not found')}${palette.faint(` (${CONFIG_FILENAME})`)}\n`,
+    );
     process.stdout.write(`\n${messages.statusNotInstalled()}\n\n`);
     return 1;
   }
 
   const config = loadConfig(cwd);
-  process.stdout.write(`  config     ${CONFIG_FILENAME}\n`);
-  process.stdout.write(`  mode       ${config.mode}\n`);
-  process.stdout.write(`  timeout    ${config.timeoutSeconds}s per check\n`);
-  process.stdout.write(`  max blocks ${config.maxBlocksPerSession} per session\n\n`);
+  process.stdout.write(`  ${label('config')} ${CONFIG_FILENAME}\n`);
+  process.stdout.write(
+    `  ${label('mode')} ${config.mode === 'warn' ? palette.warn(config.mode) : config.mode}\n`,
+  );
+  process.stdout.write(
+    `  ${label('timeout')} ${config.timeoutSeconds}s${palette.faint(' per check')}\n`,
+  );
+  process.stdout.write(
+    `  ${label('max blocks')} ${config.maxBlocksPerSession}${palette.faint(' per session')}\n\n`,
+  );
 
   const configured = Object.entries(config.checks).filter(([, v]) => v.trim() !== '');
   if (configured.length === 0) {
-    process.stdout.write('  checks     none configured\n');
+    process.stdout.write(`  ${label('checks')} ${palette.faint('none configured')}\n`);
   } else {
     for (const [name, command] of configured) {
-      process.stdout.write(`  ${name.padEnd(10)} ${command}\n`);
+      process.stdout.write(`  ${label(name)} ${command}\n`);
     }
   }
 
   // Hook registration.
   const statusAdapter = getAdapter(config.platform);
-  process.stdout.write(`\n  platform   ${statusAdapter.displayName}\n`);
+  process.stdout.write(`\n  ${label('platform')} ${statusAdapter.displayName}\n`);
   process.stdout.write(
-    `  ${statusAdapter.id === 'codex' ? codexHooksPath(cwd) : settingsPath(cwd)}\n`,
+    palette.faint(
+      `  ${statusAdapter.id === 'codex' ? codexHooksPath(cwd) : settingsPath(cwd)}\n`,
+    ),
   );
 
   if (report.settingsCorrupt) {
@@ -114,13 +130,18 @@ export async function status(_argv: string[]): Promise<number> {
   }
 
   for (const event of report.healthy) {
-    process.stdout.write(`  ${event.padEnd(14)} registered\n`);
+    process.stdout.write(`  ${label(event, 14)} ${palette.ok('registered')}\n`);
   }
   for (const { event, path } of report.brokenPaths) {
-    process.stdout.write(`  ${event.padEnd(14)} REGISTERED BUT BROKEN -> ${path}\n`);
+    // The one status that means "installed but verifying nothing" — the worst
+    // failure mode for this tool, so it gets the loudest treatment.
+    process.stdout.write(
+      `  ${label(event, 14)} ${palette.bad('REGISTERED BUT BROKEN')}` +
+        `${palette.faint(` -> ${path}`)}\n`,
+    );
   }
   for (const event of report.missing) {
-    process.stdout.write(`  ${event.padEnd(14)} not registered\n`);
+    process.stdout.write(`  ${label(event, 14)} ${palette.warn('not registered')}\n`);
   }
 
   if (report.brokenPaths.length > 0) {

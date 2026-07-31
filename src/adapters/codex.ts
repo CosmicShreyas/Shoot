@@ -111,14 +111,17 @@ export const codexAdapter: PlatformAdapter = {
         return { stdout: '', stderr: `${verdict.notice}\n`, exitCode: 0 };
 
       case 'block': {
-        // reason must be non-empty; guard rather than emit a failing hook.
+        // AGENT CHANNEL: already plain ASCII from buildBlockReason. Codex requires a
+        // non-empty reason or the hook fails, so guard rather than emit an error.
         const reason =
           verdict.reason.trim() === ''
             ? 'Verification did not pass. Re-run the checks before reporting success.'
             : verdict.reason;
         const out: CodexOutput = { decision: 'block', reason };
-        const firstLine = reason.split('\n')[0] ?? '';
-        return { stdout: `${JSON.stringify(out)}\n`, stderr: `${firstLine}\n`, exitCode: 0 };
+
+        // HUMAN CHANNEL: voiced framing line for the terminal.
+        const line = verdict.terminalNotice ?? reason.split('\n')[0] ?? '';
+        return { stdout: `${JSON.stringify(out)}\n`, stderr: `${line}\n`, exitCode: 0 };
       }
     }
   },

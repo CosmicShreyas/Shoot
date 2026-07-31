@@ -34,6 +34,7 @@ import { dirname, join } from 'node:path';
 
 import { STATE_DIR_NAME } from './circuitBreaker.js';
 import type { Checks, ShootConfig } from './config.js';
+import { plain, type Palette } from '../mascot/colors.js';
 
 export const TRUST_FILENAME = 'trust.json';
 
@@ -213,17 +214,33 @@ export function isTrusted(status: TrustStatus): boolean {
   return status === 'trusted' || status === 'empty';
 }
 
-/** Plain-text diff for `shoot trust` and `shoot doctor`. Unstyled on purpose. */
-export function formatChanges(changes: readonly TrustChange[]): string {
+/**
+ * Diff for `shoot trust` and `shoot doctor`, in the familiar git shape: `-` for what
+ * was approved, `+` for what the config now says.
+ *
+ * HUMAN CHANNEL. The palette is injected rather than resolved here so this module
+ * stays free of terminal concerns and the caller controls colour. Pass `plain` (the
+ * default) for a pipe or for tests asserting wording.
+ */
+export function formatChanges(
+  changes: readonly TrustChange[],
+  palette: Pick<Palette, 'ok' | 'bad' | 'faint' | 'accent'> = plain,
+): string {
   const lines: string[] = [];
+
+  const removed = (check: string, command: string, note = ''): string =>
+    palette.bad(`  - ${check.padEnd(10)} ${command}`) + palette.faint(note);
+  const added = (check: string, command: string): string =>
+    palette.ok(`  + ${check.padEnd(10)} ${command}`);
+
   for (const c of changes) {
     if (c.from === '') {
-      lines.push(`  + ${c.check.padEnd(10)} ${c.to}`);
+      lines.push(added(c.check, c.to));
     } else if (c.to === '') {
-      lines.push(`  - ${c.check.padEnd(10)} ${c.from}   (removed)`);
+      lines.push(removed(c.check, c.from, '   (removed)'));
     } else {
-      lines.push(`  - ${c.check.padEnd(10)} ${c.from}`);
-      lines.push(`  + ${c.check.padEnd(10)} ${c.to}`);
+      lines.push(removed(c.check, c.from));
+      lines.push(added(c.check, c.to));
     }
   }
   return lines.join('\n');

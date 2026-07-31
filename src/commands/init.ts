@@ -17,6 +17,7 @@ import { settingsCorrupt, settingsPath } from '../core/settings.js';
 import { resolveHookEntry } from '../core/shim.js';
 import { writeTrust } from '../core/trust.js';
 import { ask, closePrompts, confirm } from '../core/prompt.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 // Re-exported for tests and for other commands that need shim details.
@@ -108,8 +109,9 @@ export async function init(_argv: string[]): Promise<number> {
   // Surface platform caveats BEFORE the user commits to anything.
   const warnings = adapter.warnings();
   if (warnings.length > 0) {
+    const warnPalette = stdoutPalette();
     process.stdout.write(`${messages.initPlatformWarnings(adapter.displayName)}\n`);
-    for (const w of warnings) process.stdout.write(`    - ${w}\n`);
+    for (const w of warnings) process.stdout.write(warnPalette.warn(`    - ${w}`) + '\n');
     process.stdout.write('\n');
 
     const proceed = await confirm('Continue with this platform?', true);
@@ -164,25 +166,30 @@ export async function init(_argv: string[]): Promise<number> {
     verifySubagents,
   });
 
-  // Confirmation.
+  // Confirmation. HUMAN CHANNEL: check names accented, the commands themselves
+  // plain (they're what the user needs to read), metadata dimmed.
+  const palette = stdoutPalette();
   const configured = Object.entries(config.checks)
     .filter(([, v]) => v !== '')
-    .map(([k, v]) => `    ${k.padEnd(10)} ${v}`);
+    .map(([k, v]) => `    ${palette.accent(k.padEnd(10))} ${v}`);
 
-  process.stdout.write(messages.ART);
+  process.stdout.write(palette.ok(messages.ART));
   process.stdout.write(`\n${messages.initConfigured()}\n\n`);
   process.stdout.write(
     configured.length > 0
       ? `${configured.join('\n')}\n`
-      : `    ${messages.initNothingConfigured()}\n`,
+      : `    ${palette.faint(messages.initNothingConfigured())}\n`,
   );
-  process.stdout.write(`\n    platform   ${adapter.displayName}\n`);
+  process.stdout.write(`\n    ${palette.accent('platform'.padEnd(10))} ${adapter.displayName}\n`);
   process.stdout.write(
-    `    mode       ${mode}${mode === 'warn' ? ' (warn only, never blocks)' : ''}\n`,
+    `    ${palette.accent('mode'.padEnd(10))} ${mode === 'warn' ? palette.warn(mode) : mode}` +
+      `${mode === 'warn' ? palette.faint(' (warn only, never blocks)') : ''}\n`,
   );
-  process.stdout.write(`    hooks      ${result.events.join(', ')}\n`);
-  process.stdout.write(`\n${messages.initWrote(result.paths.join(', '))}\n`);
-  process.stdout.write(`\n${messages.initTryIt()}\n\n`);
+  process.stdout.write(
+    `    ${palette.accent('hooks'.padEnd(10))} ${palette.ok(result.events.join(', '))}\n`,
+  );
+  process.stdout.write(`\n${palette.faint(messages.initWrote(result.paths.join(', ')))}\n`);
+  process.stdout.write(`\n${palette.strong(messages.initTryIt())}\n\n`);
 
   return 0;
 }

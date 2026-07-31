@@ -13,6 +13,7 @@
 import { getAdapter } from '../adapters/index.js';
 import { loadConfig } from '../core/config.js';
 import { emit, evaluate, readStdin } from '../core/hookIO.js';
+import { paletteFor, plain } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 export async function runHook(): Promise<number> {
@@ -49,13 +50,43 @@ export async function runHook(): Promise<number> {
   if (input.hookEventName === 'SubagentStop' && !config.verifySubagents) return 0;
 
   try {
+    // Build the decision with color OFF. Everything the adapter puts on stdout is
+    // JSON the host parses, and an ANSI escape inside that payload would corrupt
+    // it — so the strings baked into `systemMessage` / `reason` must stay plain.
+    messages.setPalette(plain);
     const { response } = await evaluate(input, config, {}, outputAdapter);
-    emit(response);
+
+    // stderr is for the human, and may be a TTY even when stdout is captured by
+    // the host — so it gets its own palette decision.
+    messages.setPalette(paletteFor(process.stderr));
+    emit(response, process.stdout, {
+      write: (s: string) => process.stderr.write(recolorForTerminal(s)),
+    });
+
     return response.exitCode;
   } catch (err) {
+    messages.setPalette(paletteFor(process.stderr));
     process.stderr.write(
       `${messages.internalError(err instanceof Error ? err.message : String(err))}\n`,
     );
     return 0;
   }
+}
+
+/**
+ * The adapter already rendered the stderr line as plain text (see above), so
+ * colorize the mascot framing line on its way out.
+ *
+ * Only the framing line is touched. Diagnostic output below it stays exactly as
+ * the command emitted it — constraint from messages.ts: personality in the framing,
+ * never in the data.
+ */
+function recolorForTerminal(text: string): string {
+  const palette = paletteFor(process.stderr);
+  if (!palette.enabled) return text;
+
+  return text
+    .split('\n')
+    .map((line) => (line.startsWith(`${messages.PANDA} Shoot:`) ? palette.strong(line) : line))
+    .join('\n');
 }

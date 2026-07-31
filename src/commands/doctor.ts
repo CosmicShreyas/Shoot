@@ -20,6 +20,7 @@ import {
 } from '../core/config.js';
 import { resolveHookPath } from '../core/settings.js';
 import { checkTrust } from '../core/trust.js';
+import { stdoutPalette } from '../mascot/colors.js';
 import * as messages from '../mascot/messages.js';
 
 export type DiagnosisStatus = 'pass' | 'fail' | 'warn';
@@ -283,12 +284,22 @@ const MARK: Record<DiagnosisStatus, string> = { pass: 'ok  ', fail: 'FAIL', warn
 export async function doctor(_argv: string[]): Promise<number> {
   const cwd = process.cwd();
   const results = diagnose(cwd);
+  const palette = stdoutPalette();
 
   process.stdout.write(`\n${messages.doctorHeading()}\n\n`);
 
   for (const r of results) {
-    process.stdout.write(`  ${MARK[r.status]}  ${r.name.padEnd(20)} ${r.detail}\n`);
-    if (r.fix !== undefined) process.stdout.write(`        ${' '.repeat(20)} → ${r.fix}\n`);
+    // HUMAN CHANNEL: marker coloured by status, check name emphasised, the detail
+    // left plain so it stays readable, and the fix hint dimmed as secondary.
+    const tint =
+      r.status === 'pass' ? palette.ok : r.status === 'fail' ? palette.bad : palette.warn;
+
+    process.stdout.write(
+      `  ${tint(MARK[r.status])}  ${palette.accent(r.name.padEnd(20))} ${r.detail}\n`,
+    );
+    if (r.fix !== undefined) {
+      process.stdout.write(palette.faint(`        ${' '.repeat(20)} → ${r.fix}\n`));
+    }
   }
 
   const failures = results.filter((r) => r.status === 'fail').length;

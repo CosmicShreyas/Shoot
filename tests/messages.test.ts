@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as messages from '../src/mascot/messages.js';
+import { plain } from '../src/mascot/colors.js';
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 
@@ -49,7 +50,14 @@ test('no module builds its own voiced line via prefix()', () => {
 });
 
 test('every exported message is a non-empty string', () => {
-  const skip = new Set(['PANDA', 'ART', 'prefix']);
+  // PANDA/ART are constants; prefix is a builder; setPalette/withoutColor are
+  // palette controls, not messages — calling setPalette with a dummy arg would
+  // poison the module's palette state for every test that follows.
+  const skip = new Set(['PANDA', 'ART', 'prefix', 'setPalette', 'withoutColor']);
+
+  // Render plain so assertions are about wording, not escape codes.
+  messages.setPalette(plain);
+
   for (const [name, value] of Object.entries(messages)) {
     if (skip.has(name)) continue;
     assert.equal(typeof value, 'function', `${name} should be a function`);
@@ -86,7 +94,7 @@ test('hook-decision messages carry the mascot prefix', () => {
 
 test('structural CLI strings stay plain — no voice on data-shaped output', () => {
   // These label or frame columns of data; a panda in front would be noise.
-  const plain = [
+  const unvoiced = [
     messages.initSuggestions(),
     messages.initSkipHint(),
     messages.initNothingConfigured(),
@@ -95,7 +103,7 @@ test('structural CLI strings stay plain — no voice on data-shaped output', () 
     messages.uninstallPreserving(2),
   ];
 
-  for (const line of plain) {
+  for (const line of unvoiced) {
     assert.doesNotMatch(line, /🐼/, `should not be voiced: ${line.slice(0, 50)}`);
   }
 });
