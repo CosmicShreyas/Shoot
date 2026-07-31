@@ -14,6 +14,7 @@ import {
   type HookInput,
 } from '../src/core/hookIO.js';
 import { DEFAULT_CONFIG, saveConfig, type ShootConfig } from '../src/core/config.js';
+import { saveTrustedConfig } from './helpers.js';
 import { peek } from '../src/core/circuitBreaker.js';
 import type { VerificationReport } from '../src/core/verificationRunner.js';
 import type { DecideOptions } from '../src/core/decide.js';
@@ -42,7 +43,19 @@ async function evaluate(
   config: ShootConfig,
   options: DecideOptions = {},
 ): Promise<LegacyDecision> {
-  const { decision, response } = await evaluateRaw(input, config, options);
+  // These tests predate config-trust and exercise the decision pipeline itself,
+  // so default to "trusted" rather than making every one of them write a trust
+  // record. The guard has dedicated coverage in trust.test.ts.
+  const withTrust: DecideOptions = {
+    checkTrust: () => ({
+      status: 'trusted',
+      currentHash: 'test',
+      trustedHash: 'test',
+      changes: [],
+    }),
+    ...options,
+  };
+  const { decision, response } = await evaluateRaw(input, config, withTrust);
   return {
     output: response.stdout === '' ? {} : JSON.parse(response.stdout),
     terminalMessage: response.stderr.replace(/\n$/, ''),
@@ -240,7 +253,12 @@ test('no claim emits absolutely nothing on stdout', () => {
 test('the pass receipt IS the canonical mascot line, verbatim', async () => {
   const decision = await evaluate(
     input(),
-    config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }),
+    // Drift off: this asserts the receipt EXACTLY, and the advisory appends to it.
+    // (It fires for real here, because the default cwd is this repo.)
+    config({
+      scopeDriftWarning: false,
+      checks: { test: 'npm test', lint: '', typecheck: '', build: '' },
+    }),
     { runChecks: passing },
   );
 
@@ -376,7 +394,7 @@ test('the terminal echo of a block matches the reason first line', async () => {
 
 test('E2E: the mascot voice actually reaches stdout as systemMessage', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
 
     const { stdout } = runHookCLI({
       session_id: 'e2e-voice',
@@ -483,7 +501,7 @@ test('stop_hook_active: true never blocks, even on failing checks', async () => 
 
 test('E2E: stop_hook_active: true produces literally no stdout', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const { stdout, status } = runHookCLI({
       session_id: 'e2e-active',
@@ -561,7 +579,7 @@ test('a loop cannot occur: only the first call in a turn verifies', async () => 
 
 test('a loop cannot occur across real processes either', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
 
     const payload = {
       session_id: 'e2e-loop',
@@ -800,7 +818,7 @@ test('the stand-down uses maxBlocksPerSession, not a hardcoded 3', async () => {
 
 test('E2E: real CLI allows a non-claim turn with empty stdout', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const { stdout, status } = runHookCLI({
       session_id: 'e2e-noclaim',
@@ -816,7 +834,7 @@ test('E2E: real CLI allows a non-claim turn with empty stdout', () => {
 
 test('E2E: real CLI blocks a false claim, running a real failing command', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const { stdout, status } = runHookCLI({
       session_id: 'e2e-block',
@@ -834,7 +852,7 @@ test('E2E: real CLI blocks a false claim, running a real failing command', () =>
 
 test('E2E: real CLI allows a true claim, running a real passing command', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
 
     const { stdout, status } = runHookCLI({
       session_id: 'e2e-pass',
@@ -872,7 +890,7 @@ test('E2E: garbage stdin allows the stop instead of crashing the session', () =>
 
 test('E2E: SubagentStop is skipped when verifySubagents is false', () => {
   withTempDir((dir) => {
-    saveConfig(
+    saveTrustedConfig(
       dir,
       config({ verifySubagents: false, checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }),
     );
@@ -891,7 +909,7 @@ test('E2E: SubagentStop is skipped when verifySubagents is false', () => {
 
 test('E2E: SubagentStop IS verified by default', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const { stdout } = runHookCLI({
       session_id: 'e2e-subagent-on',
@@ -907,7 +925,7 @@ test('E2E: SubagentStop IS verified by default', () => {
 
 test('E2E: breaker state persists across separate CLI processes', () => {
   withTempDir((dir) => {
-    saveConfig(
+    saveTrustedConfig(
       dir,
       config({
         maxBlocksPerSession: 3,

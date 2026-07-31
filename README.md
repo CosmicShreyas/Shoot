@@ -164,6 +164,25 @@ There have been real supply-chain attacks via malicious Claude Code hook package
 hidden install scripts — so Shoot is built to be read end to end in one sitting. CI
 fails the build if a runtime dependency is ever added.
 
+Beyond that, because Shoot runs automatically with your permissions:
+
+- **Config changes require re-approval.** `.shoot.config.json` is committed, and its
+  commands run with no prompt — so a pull request editing one line could turn Shoot into
+  an arbitrary-command runner on every reviewer's machine, with a diff that doesn't look
+  like code. Shoot records a hash of the approved commands in gitignored
+  `.shoot/trust.json` (so a PR can't touch it). If the commands change, verification is
+  **skipped with a loud warning** until you run `shoot trust` and approve it.
+- **Captured output is redacted before it is persisted or sent anywhere.** Test output
+  flows into the agent's context, your terminal, and `.shoot/history.jsonl` on disk.
+  Recognizable secret shapes are replaced with `[REDACTED]` at the capture point.
+- **CI actions are pinned to commit SHAs**, not floating tags a compromised maintainer
+  could repoint.
+- **Releases use npm Trusted Publishing (OIDC)** — no long-lived `NPM_TOKEN` exists to
+  steal, and published tarballs carry provenance attestations.
+
+Both of the first two are defense in depth, not guarantees. [SECURITY.md](./SECURITY.md)
+is explicit about exactly what they do and don't cover.
+
 ## Configuration
 
 `.shoot.config.json`, written by `shoot init`:
@@ -209,7 +228,8 @@ so the cheapest signal comes first.
 | --- | --- |
 | `shoot init` | Interactive setup: picks your platform, writes config, installs and registers the hook. |
 | `shoot verify` | Run all configured checks once, now. Exits non-zero if any fail. |
-| `shoot doctor` | Diagnose setup problems: wrong Node, missing scripts, dead hook registrations. |
+| `shoot doctor` | Diagnose setup problems: wrong Node, missing scripts, dead hook registrations, untrusted config. |
+| `shoot trust` | Review and approve the configured check commands after they change. |
 | `shoot stats` | Summarize your local verification history. |
 | `shoot status` | Show config, and whether the hook is registered **and its script still exists**. |
 | `shoot uninstall` | Remove Shoot's hook entries, config, and state. Leaves your other hooks alone. |
@@ -331,6 +351,45 @@ Being straight about what this does and doesn't do:
   failure mode Shoot exists to prevent — Cursor is unsupported until that's confirmed.
   This is a platform constraint, not a Shoot bug.
 - **A check command that lies still lies.** Shoot verifies exit codes, not test quality.
+- **Config tamper detection is a tripwire, not a sandbox.** It makes a change to your
+  check commands *visible* and requires approval; it does not judge whether the change is
+  safe, and an approved command runs with your full permissions. It also can't help if an
+  attacker already has write access to your working tree — they could edit
+  `.shoot/trust.json` directly. Read a config change from an unfamiliar contributor the
+  same way you'd read any other code change.
+- **Secret redaction is best-effort pattern matching, not a guarantee.** No regex list is
+  exhaustive. It is calibrated to over-redact — a false positive costs you a moment of
+  confusion, a false negative writes a live credential to disk — but it will miss bespoke
+  token formats, secrets split across lines, base64-wrapped blobs, and anything that looks
+  like ordinary prose. Keep secrets out of test output in the first place.
+
+  <details>
+  <summary>Exactly what redaction currently covers</summary>
+
+  | Pattern | Covers |
+  | --- | --- |
+  | `pem-private-key` | PEM private key blocks (RSA, EC, OPENSSH, PGP, generic) |
+  | `pem-private-key-header-only` | An unterminated PEM header, in case output was truncated |
+  | `aws-access-key-id` | AWS access key IDs (`AKIA`/`ASIA`/`ABIA`/`ACCA` + 16 chars) |
+  | `aws-secret-access-key` | AWS secret keys assigned to a recognizable name |
+  | `google-api-key` | Google API keys (`AIza` + 30 or more chars) |
+  | `github-token` | `ghp_` `gho_` `ghu_` `ghs_` `ghr_` `github_pat_` |
+  | `slack-token` | Slack `xoxb-` / `xoxa-` / `xoxp-` / `xoxr-` / `xoxs-` |
+  | `stripe-key` | `sk_live_` `sk_test_` `rk_live_` `rk_test_` |
+  | `openai-key` | `sk-…` and `sk-proj-…` |
+  | `anthropic-key` | `sk-ant-…` |
+  | `npm-token` | `npm_…` |
+  | `jwt` | JWT-shaped strings (three base64url segments beginning `eyJ`) |
+  | `generic-secret-assignment` | A 16+ char value assigned to a name containing key / token / secret / password / credential / auth |
+  | `authorization-header` | `Authorization:` headers using Bearer / Basic / Token |
+  | `bearer-token` | A bare `Bearer <token>` |
+  | `url-basic-auth` | Credentials in a URL (`scheme://user:pass@host`) — host is preserved |
+  | `connection-string-password` | `password=` / `pwd=` in connection strings |
+
+  Where a pattern captures the variable name, the name is preserved so you can still tell
+  *what* leaked — only the value is replaced. Defined in
+  [`src/core/redact.ts`](./src/core/redact.ts); additions welcome.
+  </details>
 
 [claims]: .github/ISSUE_TEMPLATE/claim_detection.md
 
@@ -393,11 +452,21 @@ verification history, `doctor`, advisory scope-drift warning, six CLI commands.
 - Parallel check execution (sequential in v1, deliberately)
 - Git-aware checks (only test what changed)
 
+## Security
+
+Shoot runs automatically with your local permissions, so its threat model is written down
+rather than assumed: **[SECURITY.md](./SECURITY.md)**. It covers what the mitigations
+above actually do, what they explicitly don't, and how to report a vulnerability privately
+(GitHub private advisory — please don't open a public issue for one).
+
 ## Contributing
 
 Contributions welcome — especially real-world phrasings the claim detector missed. See
 [CONTRIBUTING.md](.github/CONTRIBUTING.md). The one hard rule: **zero runtime
 dependencies**, enforced by CI.
+
+Release process, including npm Trusted Publishing setup:
+[docs/RELEASING.md](./docs/RELEASING.md).
 
 ## License
 

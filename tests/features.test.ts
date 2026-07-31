@@ -17,6 +17,8 @@ import {
 } from '../src/core/history.js';
 import { describeDrift, detectScopeDrift } from '../src/core/scopeDrift.js';
 import { DEFAULT_CONFIG, saveConfig, type ShootConfig } from '../src/core/config.js';
+import { saveTrustedConfig } from './helpers.js';
+import { writeTrust } from '../src/core/trust.js';
 import { claudeCodeAdapter } from '../src/adapters/claudeCode.js';
 import { resolveHookEntry, SHIM_RELATIVE_PATH } from '../src/core/shim.js';
 import { decide } from '../src/core/decide.js';
@@ -129,7 +131,7 @@ test('doctor: catches a configured command with no matching package.json script'
       JSON.stringify({ scripts: { test: 'node --test' } }),
       'utf8',
     );
-    saveConfig(
+    saveTrustedConfig(
       dir,
       config({ checks: { test: 'npm test', lint: 'npm run lint', typecheck: '', build: '' } }),
     );
@@ -148,7 +150,7 @@ test('doctor: catches a configured command with no matching package.json script'
 test('doctor: does not second-guess free-form shell commands', () => {
   withTempDir((dir) => {
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: {} }), 'utf8');
-    saveConfig(
+    saveTrustedConfig(
       dir,
       config({ checks: { test: 'cargo test --all', lint: '', typecheck: '', build: '' } }),
     );
@@ -164,7 +166,7 @@ test('doctor: does not second-guess free-form shell commands', () => {
 
 test('doctor: catches a registered hook whose script is gone', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
     claudeCodeAdapter.install(dir, {
       hookEntryPath: resolveHookEntry(),
       verifySubagents: false,
@@ -183,7 +185,7 @@ test('doctor: catches a registered hook whose script is gone', () => {
 test('doctor: reports a healthy install as all-pass', () => {
   withTempDir((dir) => {
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'x' } }), 'utf8');
-    saveConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
     claudeCodeAdapter.install(dir, { hookEntryPath: resolveHookEntry(), verifySubagents: true });
 
     const results = diagnose(dir);
@@ -194,7 +196,7 @@ test('doctor: reports a healthy install as all-pass', () => {
 
 test('doctor: warns when nothing is configured to verify', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     const checks = diagnose(dir).find((r) => r.name === 'Checks configured');
     assert.equal(checks?.status, 'warn');
     assert.match(checks?.detail ?? '', /nothing to verify/);
@@ -205,7 +207,7 @@ test('doctor: warns when config platform disagrees with the filesystem', () => {
   withTempDir((dir) => {
     // Config says codex, but only .claude/ exists.
     mkdirSync(join(dir, '.claude'), { recursive: true });
-    saveConfig(dir, config({ platform: 'codex' }));
+    saveTrustedConfig(dir, config({ platform: 'codex' }));
 
     const platform = diagnose(dir).find((r) => r.name === 'Platform');
     assert.equal(platform?.status, 'warn');
@@ -218,7 +220,7 @@ test('CLI: doctor exits 1 on failures, 0 when healthy', () => {
     assert.equal(runCLI(['doctor'], dir).status, 1, 'no config = failure');
 
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'x' } }), 'utf8');
-    saveConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
     claudeCodeAdapter.install(dir, { hookEntryPath: resolveHookEntry(), verifySubagents: true });
 
     const healthy = runCLI(['doctor'], dir);
@@ -331,6 +333,9 @@ test('history: trims to a cap so the file cannot grow without bound', () => {
 test('the pipeline records history for each outcome', async () => {
   await withTempDirAsync(async (dir) => {
     const cfg = config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } });
+    // Approve the commands, or the trust guard skips verification and every
+    // outcome is 'untrusted' instead of the pass/block this is checking.
+    writeTrust(dir, cfg.checks);
 
     await decide(input({ cwd: dir }), cfg, { runChecks: async () => fakeReport(true) });
     await decide(input({ cwd: dir, sessionId: 's2' }), cfg, {

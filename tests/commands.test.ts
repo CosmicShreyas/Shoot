@@ -14,6 +14,7 @@ import {
 } from '../src/commands/init.js';
 import { gatherStatus } from '../src/commands/status.js';
 import { DEFAULT_CONFIG, configPath, saveConfig, type ShootConfig } from '../src/core/config.js';
+import { saveTrustedConfig } from './helpers.js';
 import {
   addShootHooks,
   findRegistrations,
@@ -111,7 +112,7 @@ test('the shim path ends in shoot-hook.js so uninstall can identify it', () => {
 test('the generated shim actually runs and allows a non-claim turn', () => {
   withTempDir((dir) => {
     writeHookShim(dir, resolveHookEntry());
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const payload = JSON.stringify({
       session_id: 'shim-test',
@@ -131,7 +132,7 @@ test('the generated shim actually runs and allows a non-claim turn', () => {
 test('the generated shim blocks a false claim end to end', () => {
   withTempDir((dir) => {
     writeHookShim(dir, resolveHookEntry());
-    saveConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 1', lint: '', typecheck: '', build: '' } }));
 
     const payload = JSON.stringify({
       session_id: 'shim-block',
@@ -197,7 +198,7 @@ test('status reports not-installed when there is no config', () => {
 
 test('status reports healthy when the registered shim exists', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     writeHookShim(dir, resolveHookEntry());
     writeSettings(dir, addShootHooks({}, ['Stop', 'SubagentStop'], SHIM));
 
@@ -210,7 +211,7 @@ test('status reports healthy when the registered shim exists', () => {
 
 test('status catches a registration pointing at a missing file', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     // Register, but never create the shim (simulates a moved/deleted file).
     writeSettings(dir, addShootHooks({}, ['Stop'], SHIM));
 
@@ -223,7 +224,7 @@ test('status catches a registration pointing at a missing file', () => {
 
 test('status reports missing registration when config exists but hooks do not', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     const report = gatherStatus(dir);
     assert.deepEqual(report.missing, ['Stop', 'SubagentStop']);
   });
@@ -231,7 +232,7 @@ test('status reports missing registration when config exists but hooks do not', 
 
 test('status only expects Stop when verifySubagents is false', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ verifySubagents: false }));
+    saveTrustedConfig(dir, config({ verifySubagents: false }));
     writeHookShim(dir, resolveHookEntry());
     writeSettings(dir, addShootHooks({}, ['Stop'], SHIM));
 
@@ -243,7 +244,7 @@ test('status only expects Stop when verifySubagents is false', () => {
 
 test('status flags a corrupt settings file', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     mkdirSync(join(dir, '.claude'), { recursive: true });
     writeFileSync(settingsPath(dir), '{ nope', 'utf8');
 
@@ -265,7 +266,7 @@ test('CLI: verify fails cleanly with no config', () => {
 
 test('CLI: verify passes and exits 0 when checks pass', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }));
     const { status, stdout } = runCLI(['verify'], dir);
 
     assert.equal(status, 0);
@@ -277,7 +278,7 @@ test('CLI: verify passes and exits 0 when checks pass', () => {
 test('CLI: verify exits 1 and shows real output when checks fail', () => {
   withTempDir((dir) => {
     const failing = `"${process.execPath}" -e "console.error('SPECIFIC_FAILURE_TEXT');process.exit(1)"`;
-    saveConfig(dir, config({ checks: { test: failing, lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: failing, lint: '', typecheck: '', build: '' } }));
 
     const { status, stdout } = runCLI(['verify'], dir);
     assert.equal(status, 1);
@@ -288,7 +289,7 @@ test('CLI: verify exits 1 and shows real output when checks fail', () => {
 
 test('CLI: verify says so when nothing is configured', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     const { status, stdout } = runCLI(['verify'], dir);
     assert.equal(status, 0);
     assert.match(stdout, /No checks configured/i);
@@ -305,7 +306,7 @@ test('CLI: status exits 1 when not installed', () => {
 
 test('CLI: status exits 0 and reports config when fully installed', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
+    saveTrustedConfig(dir, config({ checks: { test: 'npm test', lint: '', typecheck: '', build: '' } }));
     writeHookShim(dir, resolveHookEntry());
     writeSettings(dir, addShootHooks({}, ['Stop', 'SubagentStop'], SHIM));
 
@@ -319,7 +320,7 @@ test('CLI: status exits 0 and reports config when fully installed', () => {
 
 test('CLI: status exits 1 and warns when the shim is missing', () => {
   withTempDir((dir) => {
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     writeSettings(dir, addShootHooks({}, ['Stop'], SHIM));
 
     const { status, stdout } = runCLI(['status'], dir);
@@ -337,7 +338,7 @@ test('CLI: uninstall --yes removes Shoot but keeps a foreign hook', () => {
       },
     };
     writeSettings(dir, addShootHooks(foreign, ['Stop', 'SubagentStop'], SHIM));
-    saveConfig(dir, config());
+    saveTrustedConfig(dir, config());
     writeHookShim(dir, resolveHookEntry());
 
     const { status } = runCLI(['uninstall', '--yes'], dir);

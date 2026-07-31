@@ -173,6 +173,28 @@ maliciosos para Claude Code con scripts de instalación ocultos, así que Shoot 
 para poder leerse de principio a fin de una sola sentada. La CI falla si alguna vez se
 añade una dependencia de ejecución.
 
+Además, porque Shoot se ejecuta automáticamente con tus permisos:
+
+- **Los cambios de configuración requieren nueva aprobación.** `.shoot.config.json` se
+  versiona en el repositorio y sus comandos se ejecutan sin preguntar, así que un pull
+  request que edite una sola línea podría convertir Shoot en un ejecutor de comandos
+  arbitrarios en la máquina de cada revisor, con un diff que no parece código. Shoot guarda
+  un hash de los comandos aprobados en `.shoot/trust.json` (ignorado por git, así que un PR
+  no puede tocarlo). Si los comandos cambian, la verificación **se omite con un aviso
+  destacado** hasta que ejecutes `shoot trust` y lo apruebes.
+- **La salida capturada se redacta antes de persistirse o enviarse a ningún sitio.** La
+  salida de las pruebas llega al contexto del agente, a tu terminal y a
+  `.shoot/history.jsonl` en disco. Las formas reconocibles de secretos se sustituyen por
+  `[REDACTED]` en el momento de la captura.
+- **Las acciones de CI están fijadas a SHA de commit**, no a etiquetas móviles que un
+  mantenedor comprometido podría reapuntar.
+- **Las publicaciones usan npm Trusted Publishing (OIDC)**: no existe ningún `NPM_TOKEN`
+  de larga duración que robar, y los paquetes publicados llevan atestaciones de procedencia.
+
+Los dos primeros puntos son defensa en profundidad, no garantías.
+[SECURITY.md](./SECURITY.md) (en inglés) detalla exactamente qué cubren y qué no, incluida
+la lista completa de patrones de redacción.
+
 ## Configuración
 
 `.shoot.config.json`, escrito por `shoot init`:
@@ -218,7 +240,8 @@ independientemente del orden de las claves, para que la señal más barata llegu
 | --- | --- |
 | `shoot init` | Configuración interactiva: elige la plataforma, escribe la configuración, instala y registra el hook. |
 | `shoot verify` | Ejecuta una vez todas las comprobaciones configuradas. Sale con código distinto de cero si alguna falla. |
-| `shoot doctor` | Diagnostica problemas de instalación: Node incorrecto, scripts ausentes, registros de hook muertos. |
+| `shoot doctor` | Diagnostica problemas de instalación: Node incorrecto, scripts ausentes, registros de hook muertos, configuración sin aprobar. |
+| `shoot trust` | Revisa y aprueba los comandos configurados después de que cambien. |
 | `shoot stats` | Resume tu historial local de verificaciones. |
 | `shoot status` | Muestra la configuración y si el hook está registrado **y su script sigue existiendo**. |
 | `shoot uninstall` | Elimina las entradas de hook, la configuración y el estado de Shoot. No toca tus otros hooks. |
@@ -407,6 +430,14 @@ informativo de desvío de alcance y seis comandos de la CLI.
 - Tiempos límite por comprobación (hoy hay un único valor global)
 - Ejecución paralela de comprobaciones (secuencial en la v1, a propósito)
 - Comprobaciones conscientes de Git (probar solo lo que cambió)
+
+## Seguridad
+
+Shoot se ejecuta automáticamente con tus permisos locales, así que su modelo de amenazas
+está escrito en lugar de asumido: **[SECURITY.md](./SECURITY.md)** (en inglés). Explica qué
+hacen realmente las mitigaciones anteriores, qué explícitamente no hacen, y cómo informar de
+una vulnerabilidad en privado (aviso de seguridad privado de GitHub; por favor no abras una
+incidencia pública para ello).
 
 ## Contribuir
 
