@@ -73,6 +73,26 @@ export const skippedBadCwd = (cwd: string): string =>
       'Run `shoot verify` to check this project manually.',
   );
 
+/**
+ * The configured commands changed since they were last approved, so nothing was
+ * run. Deliberately unmistakable: this is the one message where being ignored has
+ * a security consequence.
+ */
+export const configChanged = (): string =>
+  prefix(
+    "⚠️  Your .shoot.config.json commands changed since you last approved them, so I " +
+      "skipped verification rather than run something you haven't seen. Nothing was " +
+      'verified. Run `shoot trust` to review the change and approve it.',
+  );
+
+/** No trust record exists for the configured commands. */
+export const configUntrusted = (): string =>
+  prefix(
+    "⚠️  I don't have a record of you approving these check commands, so I skipped " +
+      'verification rather than run them unseen. Nothing was verified. Run ' +
+      '`shoot trust` to review and approve them.',
+  );
+
 /** A claim was made, but there's nothing configured to check it against. */
 export const noChecksConfigured = (): string =>
   prefix('No checks configured yet — nothing to verify. Run `shoot init` to set some up.');
@@ -151,6 +171,26 @@ export const brokenRegistration = (): string =>
     'A hook is registered but its script is missing, so nothing is being verified. ' +
       'Run `shoot init` to repair it.',
   );
+
+export const trustReviewHeading = (): string =>
+  prefix('These are the commands I would run. Review them before approving:');
+
+export const trustWarning = (): string =>
+  '  These run on your machine with your permissions, every time your agent claims\n' +
+  '  to be done. Treat this like reviewing any other code — if a change arrived in a\n' +
+  '  pull request you did not write, read it carefully.';
+
+export const trustApproved = (): string =>
+  prefix('Approved. Verification is active again for these commands.');
+
+export const trustDeclined = (): string =>
+  prefix('Not approved — nothing changed, and verification stays skipped until you approve.');
+
+export const trustAlreadyTrusted = (): string =>
+  prefix('These commands are already approved:');
+
+export const trustNothingToApprove = (): string =>
+  prefix('No check commands configured, so there is nothing to approve.');
 
 export const doctorHeading = (): string => prefix("Let's check your setup.");
 

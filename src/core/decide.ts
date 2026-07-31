@@ -13,6 +13,7 @@ import { detectClaims } from './claimDetector.js';
 import { recordBlock, reset } from './circuitBreaker.js';
 import type { ShootConfig } from './config.js';
 import { appendHistory, type HistoryOutcome } from './history.js';
+import { checkTrust, isTrusted, type TrustCheck } from './trust.js';
 import { describeDrift, detectScopeDrift } from './scopeDrift.js';
 import {
   failureFingerprint,
@@ -42,6 +43,8 @@ export interface DecideOptions {
   directoryExists?: (path: string) => boolean;
   /** Injected in tests; skip writing to the history log. */
   recordHistory?: boolean;
+  /** Injected in tests; defaults to the real trust check. */
+  checkTrust?: (cwd: string, config: ShootConfig) => TrustCheck;
 }
 
 /**
@@ -130,6 +133,28 @@ export async function decide(
   // 2. No completion claim: stay quiet. Normal turns must not be noisy.
   if (!claim.claimed) {
     return { verdict: { kind: 'allowSilent' }, claim };
+  }
+
+  // 2b. A claim was made, so we are about to execute the configured commands.
+  //     Before doing that, confirm they are the commands the user approved.
+  //     `.shoot.config.json` is committed and runs with no re-approval, so an
+  //     edit arriving via a pull request would otherwise execute silently on
+  //     every reviewer's machine. Fail in the direction of skipping.
+  const trust = (options.checkTrust ?? checkTrust)(input.cwd, config);
+  if (!isTrusted(trust.status)) {
+    log(input, options, 'untrusted', undefined, {
+      ...(claim.matches[0]?.text !== undefined ? { claimText: claim.matches[0].text } : {}),
+    });
+    return {
+      verdict: {
+        kind: 'allowWithNotice',
+        notice:
+          trust.status === 'changed'
+            ? messages.configChanged()
+            : messages.configUntrusted(),
+      },
+      claim,
+    };
   }
 
   // 3. A claim was made — actually run the checks.

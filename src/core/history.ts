@@ -23,7 +23,9 @@ export type HistoryOutcome =
   /** Breaker limit reached; allowed through despite failing checks. */
   | 'stoodDown'
   /** A claim was made but nothing was configured to verify it. */
-  | 'skipped';
+  | 'skipped'
+  /** Verification was skipped because the config's commands were not trusted. */
+  | 'untrusted';
 
 export interface HistoryEntry {
   /** ISO-8601 timestamp. */
@@ -105,6 +107,8 @@ export interface HistoryStats {
   warned: number;
   stoodDown: number;
   skipped: number;
+  /** Claims where verification was skipped because the config was untrusted. */
+  untrusted: number;
   /** Claims that were caught and did not survive: blocked + warned + stoodDown. */
   caught: number;
   /** Share of verified claims that passed, 0..1. Null when nothing verified. */
@@ -122,9 +126,11 @@ export function summarizeHistory(entries: HistoryEntry[]): HistoryStats {
   const warned = count('warned');
   const stoodDown = count('stoodDown');
   const skipped = count('skipped');
+  const untrusted = count('untrusted');
 
-  // Pass rate is over claims actually verified — "skipped" had nothing to check,
-  // so counting it either way would misrepresent the number.
+  // Pass rate is over claims actually verified. "skipped" had nothing to check
+  // and "untrusted" was never run at all, so counting either would misrepresent
+  // the number.
   const verified = passed + blocked + warned + stoodDown;
 
   const sorted = entries.map((e) => e.at).sort();
@@ -136,6 +142,7 @@ export function summarizeHistory(entries: HistoryEntry[]): HistoryStats {
     warned,
     stoodDown,
     skipped,
+    untrusted,
     caught: blocked + warned + stoodDown,
     passRate: verified === 0 ? null : passed / verified,
     firstAt: sorted[0] ?? null,

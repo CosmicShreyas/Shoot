@@ -14,6 +14,7 @@ Usage:
   shoot init         Set up the stop hook and write .shoot.config.json
   shoot verify       Run all configured checks once and print the result
   shoot doctor       Diagnose common setup problems
+  shoot trust        Review and approve the configured check commands
   shoot stats        Summarize local verification history
   shoot status       Show current config and hook registration
   shoot uninstall    Remove the hook and config
@@ -50,6 +51,10 @@ async function main(argv: string[]): Promise<number> {
     case 'doctor': {
       const { doctor } = await import('./commands/doctor.js');
       return doctor(rest);
+    }
+    case 'trust': {
+      const { trust } = await import('./commands/trust.js');
+      return trust(rest);
     }
     case 'stats': {
       const { stats } = await import('./commands/stats.js');

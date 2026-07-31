@@ -19,6 +19,7 @@ import {
   type ShootConfig,
 } from '../core/config.js';
 import { resolveHookPath } from '../core/settings.js';
+import { checkTrust } from '../core/trust.js';
 import * as messages from '../mascot/messages.js';
 
 export type DiagnosisStatus = 'pass' | 'fail' | 'warn';
@@ -207,6 +208,45 @@ function checkPlatformMatch(cwd: string, config: ShootConfig): Diagnosis {
   };
 }
 
+/**
+ * Are the configured commands the ones the user approved? An untrusted config
+ * means verification is currently being skipped entirely, which is a silent
+ * degradation and therefore exactly what doctor exists to surface.
+ */
+function checkConfigTrust(cwd: string, config: ShootConfig): Diagnosis {
+  const status = checkTrust(cwd, config);
+
+  switch (status.status) {
+    case 'trusted':
+      return { name: 'Config trust', status: 'pass', detail: 'commands match what you approved' };
+
+    case 'empty':
+      return {
+        name: 'Config trust',
+        status: 'pass',
+        detail: 'no commands configured, nothing to approve',
+      };
+
+    case 'changed': {
+      const changed = status.changes.map((c) => c.check).join(', ');
+      return {
+        name: 'Config trust',
+        status: 'fail',
+        detail: `commands changed since approval (${changed}) — verification is being SKIPPED`,
+        fix: 'Run `shoot trust` to review the change and approve it.',
+      };
+    }
+
+    case 'unknown':
+      return {
+        name: 'Config trust',
+        status: 'fail',
+        detail: 'no approval on record — verification is being SKIPPED',
+        fix: 'Run `shoot trust` to review and approve the commands.',
+      };
+  }
+}
+
 /** Platform caveats are worth repeating here, not just at install time. */
 function platformWarnings(config: ShootConfig): Diagnosis[] {
   const adapter = getAdapter(config.platform);
@@ -229,6 +269,7 @@ export function diagnose(cwd: string): Diagnosis[] {
 
   const config = loadConfig(cwd);
   results.push(checkPlatformMatch(cwd, config));
+  results.push(checkConfigTrust(cwd, config));
   results.push(checkAnyChecksConfigured(config));
   results.push(...checkCommandsExist(cwd, config));
   results.push(...checkRegistrations(cwd, config));

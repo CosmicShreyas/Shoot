@@ -15,6 +15,7 @@ import { DEFAULT_CONFIG, saveConfig, type Mode, type ShootConfig } from '../core
 import { codexHooksCorrupt, codexHooksPath } from '../core/codexConfig.js';
 import { settingsCorrupt, settingsPath } from '../core/settings.js';
 import { resolveHookEntry } from '../core/shim.js';
+import { writeTrust } from '../core/trust.js';
 import { ask, closePrompts, confirm } from '../core/prompt.js';
 import * as messages from '../mascot/messages.js';
 
@@ -153,6 +154,10 @@ export async function init(_argv: string[]): Promise<number> {
   };
 
   saveConfig(cwd, config);
+
+  // The user just chose these commands interactively, so they are approved by
+  // definition. Recording that now is what makes a LATER change detectable.
+  writeTrust(cwd, config.checks);
 
   const result = adapter.install(cwd, {
     hookEntryPath: resolveHookEntry(),
