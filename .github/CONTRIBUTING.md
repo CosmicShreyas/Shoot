@@ -147,10 +147,16 @@ unedited, formatting warts and all.
 
 ## Translations
 
-[`README.md`](../README.md) (English) is the canonical source of truth. The translations —
-[中文](../README.zh-CN.md), [हिन्दी](../README.hi.md), [Español](../README.es.md),
-[Français](../README.fr.md) — may lag behind English updates, and PRs correcting drift or
-adding a new language are welcome. Translate prose only: code blocks, commands, config
+[`README.md`](../README.md) (English) is the canonical source of truth. The translations
+live in [`docs/`](../docs/) — [中文](../docs/README.zh-CN.md),
+[हिन्दी](../docs/README.hi.md), [Español](../docs/README.es.md),
+[Français](../docs/README.fr.md) — and may lag behind English updates; PRs correcting drift
+or adding a new language are welcome.
+
+They sit under `docs/` rather than the repository root for a concrete reason: npm
+force-includes every file matching `README*` in the published tarball, regardless of the
+`files` allowlist or `.npmignore`. At the root they added ~110 kB of translations to a
+package nobody installs for its documentation. Translate prose only: code blocks, commands, config
 keys, filenames, CLI flags, and Shoot's own output strings stay in English, since those are
 literal rather than language-dependent.
 

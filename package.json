@@ -1,15 +1,20 @@
 {
   "name": "shoot-cc",
   "version": "0.1.0",
-  "description": "Grow only when it's real. Stops AI coding agents from claiming \"done\" unless it can actually prove it. Zero dependencies.",
+  "description": "No receipts, no rest. Stops AI coding agents from claiming \"done\" unless it can actually prove it. Zero dependencies.",
   "keywords": [
     "claude-code",
+    "codex-cli",
     "hooks",
     "verification",
     "ai-agents",
+    "agent-verification",
+    "developer-tools",
+    "cli",
     "testing"
   ],
   "license": "MIT",
+  "author": "CosmicShreyas (https://github.com/CosmicShreyas)",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -17,9 +22,9 @@
   "bin": {
     "shoot": "dist/cli.js"
   },
-  "main": "dist/cli.js",
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "!dist/**/*.map",
     "README.md",
     "LICENSE"
   ],
@@ -28,7 +33,7 @@
     "test": "cd dist-tests && node --test",
     "pretest": "tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

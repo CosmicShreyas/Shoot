@@ -1,10 +1,31 @@
-# package.json "files" is the source of truth for what ships.
-# This file exists only to keep stray local artifacts out if "files" is ever widened.
+# package.json "files" is the primary source of truth for what ships.
+# This file handles the cases "files" cannot.
+
+# Repository content that is not needed at runtime.
 src/
 tests/
 dist-tests/
 .github/
+docs/
 assets/
 tsconfig*.json
 .shoot.config.json
 .shoot/
+
+# Source maps: kept locally for debugging, but they reference src/ paths that are
+# not published, so in the tarball they are unresolvable dead weight (~104 kB).
+*.map
+
+# Translated READMEs. npm force-includes every README* variant regardless of the
+# "files" allowlist, so excluding them requires .npmignore specifically. They are
+# ~110 kB and available on GitHub, which the English README links to.
+README.zh-CN.md
+README.hi.md
+README.es.md
+README.fr.md
+
+# Repo-level docs that belong on GitHub, not in node_modules.
+ORIGIN.md
+DEMO.md
+CODE_OF_CONDUCT.md
+SECURITY.md
