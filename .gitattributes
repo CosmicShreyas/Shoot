@@ -1,0 +1,12 @@
+# Normalize line endings so the repo is identical regardless of contributor OS.
+# Without this, a Windows checkout produces CRLF diffs on every file.
+* text=auto eol=lf
+
+# Generated / vendored — leave alone.
+package-lock.json -diff linguist-generated
+
+# Binary assets, once the mascot art lands.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
