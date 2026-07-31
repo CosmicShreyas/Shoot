@@ -1,0 +1,95 @@
+name: Release
+
+# Publishes to npm using Trusted Publishing (OIDC). No NPM_TOKEN secret exists in
+# this repository, and none should ever be added — the whole point is that there
+# is no long-lived credential to steal. npm mints a short-lived token from the
+# OIDC identity of this specific workflow in this specific repository.
+#
+# This also produces provenance attestations automatically, so consumers can
+# verify the published tarball was built here from this commit.
+#
+# NOT YET ACTIVE. One manual step on npmjs.com is required first — see
+# docs/RELEASING.md. Until that is done, this workflow will fail at the publish
+# step (by design: it fails rather than falling back to something less safe).
+
+on:
+  # Manual only, deliberately. A release should be an explicit decision, not a
+  # side effect of pushing a tag that might have been created by accident.
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run every step but do not actually publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # A GitHub environment gives you an optional required-reviewer gate on
+    # publishing. Configure it in repo settings if you want a second pair of eyes.
+    environment: npm-publish
+
+    permissions:
+      contents: read
+      # Required for OIDC. Without it, npm cannot verify who is publishing.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # Node 24 is required, not merely preferred: Trusted Publishing needs
+      # npm >= 11.5.1, and Node 18/20/22 bundle npm 10.x. The explicit npm
+      # upgrade below is a belt-and-braces guard in case the bundled version
+      # shifts.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          node -e "
+            const { execFileSync } = require('node:child_process');
+            const v = execFileSync('npm', ['--version'], { encoding: 'utf8', shell: true }).trim();
+            const [maj, min, patch] = v.split('.').map(Number);
+            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && patch >= 1)));
+            if (!ok) {
+              console.error('npm ' + v + ' is too old for trusted publishing; need >= 11.5.1');
+              process.exit(1);
+            }
+            console.log('npm ' + v + ' supports trusted publishing.');
+          "
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Verify before publishing
+        run: |
+          npm run typecheck
+          npm run build
+          npm test
+
+      - name: Assert no runtime dependencies
+        run: |
+          node -e "
+            const p = require('./package.json');
+            const d = Object.keys(p.dependencies ?? {});
+            if (d.length) { console.error('Runtime dependencies found:', d); process.exit(1); }
+            console.log('OK: no runtime dependencies declared.');
+          "
+
+      - name: Show what would be published
+        run: npm pack --dry-run
+
+      - name: Publish (dry run)
+        if: ${{ inputs.dry-run }}
+        run: npm publish --provenance --access public --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry-run }}
+        # No NODE_AUTH_TOKEN / NPM_TOKEN. Authentication is the OIDC identity.
+        run: npm publish --provenance --access public
