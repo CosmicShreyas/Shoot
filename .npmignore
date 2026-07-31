@@ -1,0 +1,10 @@
+# package.json "files" is the source of truth for what ships.
+# This file exists only to keep stray local artifacts out if "files" is ever widened.
+src/
+tests/
+dist-tests/
+.github/
+assets/
+tsconfig*.json
+.shoot.config.json
+.shoot/

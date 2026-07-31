@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-tests/
+*.tsbuildinfo
+
+# Shoot's own local state / config, when dogfooding in this repo
+.shoot.config.json
+.shoot/
+
+.DS_Store
+*.log
