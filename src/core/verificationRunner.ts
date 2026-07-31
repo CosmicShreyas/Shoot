@@ -10,6 +10,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 
 import type { Checks, ShootConfig } from './config.js';
+import { redactSecrets } from './redact.js';
 
 export type CheckName = 'test' | 'lint' | 'typecheck' | 'build';
 
@@ -207,13 +208,26 @@ export async function runCheck(
       ? 'passed'
       : 'failed';
 
-  const output = outcome.timedOut
-    ? truncateOutput(
-        `${outcome.output}\n[shoot] command exceeded ${timeoutMs / 1000}s and was killed.\n`,
-      )
-    : truncateOutput(outcome.output);
+  // Redact BEFORE truncating, and before this value reaches any caller. Captured
+  // output flows into the agent's context, the user-facing message, and the
+  // on-disk history log — so this is the single choke point where a leaked
+  // credential can still be caught. Redact first so truncation cannot split a
+  // secret across the boundary and leave half of it visible.
+  const raw = outcome.timedOut
+    ? `${outcome.output}\n[shoot] command exceeded ${timeoutMs / 1000}s and was killed.\n`
+    : outcome.output;
+  const output = truncateOutput(redactSecrets(raw));
 
-  return { name, command: trimmed, status, exitCode: outcome.exitCode, output, durationMs };
+  return {
+    name,
+    // The command string is echoed into block reasons and history too, and a
+    // configured command can legitimately carry an inline token.
+    command: redactSecrets(trimmed),
+    status,
+    exitCode: outcome.exitCode,
+    output,
+    durationMs,
+  };
 }
 
 /**
