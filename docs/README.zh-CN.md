@@ -1,14 +1,16 @@
-[English](./README.md) · **中文** · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · [Français](./README.fr.md)
+[English](../README.md) · **中文** · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · [Français](./README.fr.md)
 
 # 🐼 shoot
 
-### *只有真实，才能生长。*
+### *不掺假，真的。*
+
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 **除非能真正证明，否则不让 AI 编程助手说"完成了"。**
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](./LICENSE)
+[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
 <!-- MASCOT_HERO_IMAGE -->
@@ -18,7 +20,7 @@
 竹笋只有在根系确认稳固之后才会向上生长。这个工具也是同样的道理：
 在测试通过之前，你的 AI 助手没有资格说"已修复"。
 
-> 英文版 [README.md](./README.md) 是唯一权威来源。本译文可能落后于英文更新。
+> 英文版 [README.md](../README.md) 是唯一权威来源。本译文可能落后于英文更新。
 
 ---
 
@@ -170,7 +172,7 @@ Shoot 的设计目标是能被一次性通读完毕。若有人添加运行时�
 - **发布使用 npm Trusted Publishing（OIDC）**——不存在可被窃取的长期 `NPM_TOKEN`，
   且发布产物带有来源证明（provenance）。
 
-前两项属于纵深防御，而非绝对保证。[SECURITY.md](./SECURITY.md)（英文）明确说明了它们各自
+前两项属于纵深防御，而非绝对保证。[SECURITY.md](../SECURITY.md)（英文）明确说明了它们各自
 覆盖与不覆盖的范围，其中也包含脱敏所覆盖的完整模式清单。
 
 ## 配置
@@ -283,7 +285,7 @@ Shoot 的设计目标是能被一次性通读完毕。若有人添加运行时�
 
 `shoot init` 会根据 `.claude/` 或 `.codex/` 自动识别你使用的平台，只有在无法判断时才会询问。
 完整说明（包括每个尚未支持的平台具体卡在什么地方）见
-[docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)。
+[docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md)。
 
 有两个 Codex 差异值得提前了解：那里的 `decision: "block"` 含义是*带着该原因继续*，
 而不是*阻止结束*（两者都能产生 Shoot 想要的效果）；并且 Codex 在 `Stop` 事件上不支持
@@ -359,7 +361,7 @@ Shoot 自己运行命令、自己读取真实退出码，助手无法跳过、�
 **支持 Cursor 或 Windsurf 吗？**
 暂不支持。目前支持 Claude Code 与 OpenAI Codex CLI。Cursor 文档中有 `stop` 钩子，
 但它是否在 CLI 中触发尚不明确，因此我们刻意选择暂不支持，而不是提供半可用的实现——
-详见 [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)。验证引擎与钩子层相互独立，
+详见 [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md)。验证引擎与钩子层相互独立，
 因此新增一个平台只是一个小适配器，而不是重写。
 
 **如果检查很慢怎么办？**
@@ -377,35 +379,56 @@ Shoot 自己运行命令、自己读取真实退出码，助手无法跳过、�
 
 ## 路线图
 
-**v1 已包含（现在）：** 声称检测、带超时的真实检查执行、block / warn 两种模式、断路器、
-停止与子助手停止事件、Claude Code 与 Codex 适配器、本地验证历史、`doctor`、
-范围偏移参考提示、六个 CLI 命令。
+**目前已实现：** 声称检测、带超时的真实检查执行、block / warn 两种模式、断路器、
+停止与子助手停止事件、Claude Code 与 Codex 适配器、配置篡改检测、密钥脱敏、本地验证历史、
+`doctor`、范围偏移参考提示、七个 CLI 命令。
 
-**v1 不包含，如实说明：**
+### 设想，而非承诺
 
-- 对 Cursor / Kiro / Antigravity 的支持——每一个都卡在具体问题上，详见
-  [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)
-- Codex 适配器的真实会话验证
-- 语义级范围偏移检测（目前是基于文件数量的启发式判断）
-- 任何形式的仪表盘或托管服务
-- 针对单项检查的独立超时（目前只有一个全局值）
-- 并行执行检查（v1 刻意采用串行）
-- 感知 Git 的检查（只测试发生变更的部分）
+以下内容**均未排期，仅为设想**。没有时间表，也没有承诺——列出它们只是为了让你看清方向。
+其中若干项受阻于他人的文档而非工作量。完整说明见
+[英文 README](../README.md#roadmap)。
+
+- **Cursor 适配器**——Cursor 文档中有 `stop` 钩子及 `followup_message` 字段，与 Shoot 的
+  需求相当接近。障碍在于其文档未说明助手钩子是否在 `cursor-agent`（CLI）中触发，还是仅限
+  桌面应用。发布一个在 CLI 下静默失效的适配器，正是本工具要防止的失败模式，因此需等待确认。
+  详见 [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md)。
+- **Kiro 适配器**——Kiro 有钩子系统，但未确认存在可用于阻止的完成事件。只能观察的钩子可以
+  记录虚假声称，却无法阻止它。需先对照 AWS 现行文档核实。
+- **Codex 适配器的真实会话验证**——已依据官方文档契约构建并有单元测试覆盖，但从未在真实
+  Codex 会话中运行。Claude Code 路径已经验证过；这一不对称应当消除。
+- **可共享的统计摘要**（`shoot stats --team` 或类似形式）——面向希望展示自身虚假声称
+  拦截率的团队。真正的设计难点在于：如何在不泄露声称文本与文件路径的前提下仍然有用。
+- **非英语声称检测短语包**——检测器目前仅支持英语。以西班牙语、中文、印地语或其他语言表述的
+  完成声称完全不会被捕获。模式表本身已是数据而非逻辑，因此这主要是翻译与测试的工作，
+  也是对英语之外团队最可能产生实际影响的缺口。
+- **可选的 GitHub Action 变体**——在 PR / CI 阶段运行同一套验证逻辑，而不仅是通过本地
+  助手钩子。核心逻辑本已与平台无关，因此无需重构即可实现。
+- **吉祥物插画**——设计说明见
+  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md)，插画本身尚不存在。
+- **自用演示视频**——脚本见 [DEMO.md](../DEMO.md)，可随时录制。
+
+### 明确不打算做
+
+- 任何仪表盘或托管服务。Shoot 保持本地与离线。
+- 语义级范围偏移检测。当前实现基于文件数量，并如实说明了这一点；把它做得"更聪明"
+  只会让它更自信地出错。
+- 针对单项检查的独立超时、并行执行检查、感知 Git 的检查。都说得通，但都不紧迫。
 
 ## 安全
 
 Shoot 会以你的本地权限自动运行，因此它的威胁模型被明确写了下来，而不是想当然：
-**[SECURITY.md](./SECURITY.md)**（英文）。其中说明了上述缓解措施实际能做什么、明确不能做什么，
+**[SECURITY.md](../SECURITY.md)**（英文）。其中说明了上述缓解措施实际能做什么、明确不能做什么，
 以及如何私下报告漏洞（使用 GitHub 私密安全公告——请不要为安全问题创建公开 issue）。
 
 ## 参与贡献
 
 欢迎贡献——尤其欢迎提交声称检测器漏掉的真实措辞。请参阅
-[CONTRIBUTING.md](.github/CONTRIBUTING.md)。唯一的硬性规则是：**零运行时依赖**，
+[CONTRIBUTING.md](../.github/CONTRIBUTING.md)。唯一的硬性规则是：**零运行时依赖**，
 由 CI 强制执行。
 
 译文同样欢迎。英文 README 是权威来源；若译文出现滞后，欢迎通过 PR 修正。
 
 ## 许可证
 
-[MIT](./LICENSE)
+[MIT](../LICENSE)

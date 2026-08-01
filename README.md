@@ -1,8 +1,10 @@
-**English** · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · [Français](./README.fr.md)
+**English** · [中文](./docs/README.zh-CN.md) · [हिन्दी](./docs/README.hi.md) · [Español](./docs/README.es.md) · [Français](./docs/README.fr.md)
 
 # 🐼 shoot
 
-### *Grow only when it's real.*
+### *No cap, for real.*
+
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 **Stops AI coding agents from saying "done" unless it can actually prove it.**
 
@@ -267,20 +269,37 @@ transmitted anywhere. `shoot stats` reads it back:
 ```
 🐼 Shoot: Your verification history
 
-  verifications   3
-  sessions        1
-  first / last    2026-07-31 .. 2026-07-31
+  pass rate  65% of 17 verified claims
+  caught     6 claims not backed by passing checks
+  total      19 across 3 sessions
 
-  passed          1
-  blocked         2
+  activity   ▂▄··▂▆··▂▂▄▄▄█  Jul 18 – Jul 31
+              peak 4/day
 
-  pass rate       33% of verified claims
+  breakdown
+    passed           ████████████████████████   11  58%
+    blocked          ███████████    5  26%
+    warned only      ██    1  5%
+    config untrusted ██    1  5%
+    no checks set    ██    1  5%
 
-🐼 Shoot: Caught 2 completion claims that weren't backed by passing checks.
+  recent
+       1h ago  blocked    "all tests pass"
+       3h ago  passed     "fixed it"
+       5h ago  skipped    "fixed it"
+       1d ago  passed     "fixed it"
+
+🐼 Shoot: Caught 6 completion claims that weren't backed by passing checks.
 ```
 
+In a real terminal the sparkline, bars, and timeline are colour-coded by outcome — green
+passed, red blocked, yellow for warnings and stand-downs. Bars scale to the largest
+outcome rather than the total, so a small category stays visible; the percentage carries
+the absolute meaning.
+
 Pass rate is computed over claims actually verified — turns where nothing was configured
-to check are excluded, since counting them either way would misrepresent the number.
+to check, or where the config wasn't trusted, are excluded, since counting them either way
+would misrepresent the number.
 
 ## Supported platforms
 
@@ -437,20 +456,51 @@ entries — verified by a round-trip test asserting the file is byte-identical a
 
 ## Roadmap
 
-**In v1 (now):** claim detection, real check execution with timeouts, block/warn modes,
-circuit breaker, stop + subagent-stop events, Claude Code and Codex adapters, local
-verification history, `doctor`, advisory scope-drift warning, six CLI commands.
+**What exists today:** claim detection, real check execution with timeouts, block/warn
+modes, circuit breaker, stop + subagent-stop events, Claude Code and Codex adapters,
+config tamper detection, secret redaction, local verification history, `doctor`,
+advisory scope-drift warning, seven CLI commands.
 
-**Not in v1, honestly:**
+### Ideas, not commitments
 
-- Cursor / Kiro / Antigravity support — each blocked on something specific, documented in
-  [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)
-- Live-session verification of the Codex adapter
-- Semantic scope-drift detection (today's is a file-count heuristic)
-- Any kind of dashboard or hosted service
-- Per-check timeouts (one global value today)
-- Parallel check execution (sequential in v1, deliberately)
-- Git-aware checks (only test what changed)
+Everything below is **unscheduled and aspirational**. No dates, no promises — these are
+things worth building, listed so you can see the direction and tell me if I'm wrong about
+the priorities. Several are blocked on someone else's documentation rather than on effort.
+
+- **Cursor adapter** — Cursor documents a `stop` hook with a `followup_message` field,
+  which is close to what Shoot needs. The blocker is that their docs don't say whether
+  agent hooks fire under `cursor-agent` (CLI) or only in the desktop app. Shipping an
+  adapter that silently does nothing would be the exact failure mode this tool exists to
+  prevent, so it waits on confirmation. See
+  [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md).
+- **Kiro adapter** — Kiro has a hooks system, but research didn't confirm a
+  completion-blocking-equivalent event. Hooks that only observe can log a false claim;
+  they can't stop one. Needs verification against AWS's current docs first.
+- **Live-session verification of the Codex adapter** — built to the documented contract
+  and unit-tested, but never run against a real Codex session. The Claude Code path has
+  been; that asymmetry should close.
+- **Shareable stats summary** (`shoot stats --team` or similar) — for teams who want to
+  surface their false-claim-catch rate. Would need a format that's useful without leaking
+  claim text or file paths, which is the actual design problem.
+- **Non-English claim-detection phrase packs** — the detector is English-only today. A
+  completion claim phrased in Spanish, Mandarin, Hindi, or anything else goes completely
+  undetected. The pattern table is already data rather than logic, so this is mostly a
+  translation-and-testing problem, and it's the gap most likely to matter to real users
+  outside English-speaking teams.
+- **Optional GitHub Action variant** — run the same verification logic at PR/CI time, not
+  only locally via the agent hook. The core is already platform-neutral, so this is
+  plausible without restructuring.
+- **Mascot artwork** — the brief exists at
+  [assets/mascot-placeholder.md](./assets/mascot-placeholder.md); the art does not.
+- **Dogfooding demo video** — the script exists at [DEMO.md](./DEMO.md), ready to record.
+
+### Deliberately not planned
+
+- Any dashboard or hosted service. Shoot stays local and offline.
+- Semantic scope-drift detection. Today's is a file-count heuristic and is honest about
+  it; making it smarter risks making it confidently wrong.
+- Per-check timeouts, parallel check execution, git-aware checks. All defensible, none
+  urgent.
 
 ## Security
 

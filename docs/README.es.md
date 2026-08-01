@@ -1,14 +1,16 @@
-[English](./README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · **Español** · [Français](./README.fr.md)
+[English](../README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · **Español** · [Français](./README.fr.md)
 
 # 🐼 shoot
 
-### *Crece solo cuando es real.*
+### *Sin cuentos, de verdad.*
+
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 **Impide que los agentes de programación con IA digan «listo» a menos que puedan demostrarlo.**
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](./LICENSE)
+[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
 <!-- MASCOT_HERO_IMAGE -->
@@ -18,7 +20,7 @@
 Un brote de bambú no crece hacia arriba hasta que sus raíces están comprobadas. La misma
 idea: tu agente no puede decir «arreglado» hasta que las pruebas estén de acuerdo.
 
-> El [README.md](./README.md) en inglés es la única fuente autorizada. Esta traducción
+> El [README.md](../README.md) en inglés es la única fuente autorizada. Esta traducción
 > puede quedar desactualizada respecto al original.
 
 ---
@@ -192,7 +194,7 @@ Además, porque Shoot se ejecuta automáticamente con tus permisos:
   de larga duración que robar, y los paquetes publicados llevan atestaciones de procedencia.
 
 Los dos primeros puntos son defensa en profundidad, no garantías.
-[SECURITY.md](./SECURITY.md) (en inglés) detalla exactamente qué cubren y qué no, incluida
+[SECURITY.md](../SECURITY.md) (en inglés) detalla exactamente qué cubren y qué no, incluida
 la lista completa de patrones de redacción.
 
 ## Configuración
@@ -307,7 +309,7 @@ distorsionaría la cifra.
 
 `shoot init` detecta qué plataforma usas a partir de `.claude/` o `.codex/` y solo pregunta si
 no puede saberlo. El detalle completo, incluido qué bloquea exactamente cada plataforma no
-compatible, está en [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md).
+compatible, está en [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md).
 
 Dos diferencias de Codex que conviene saber de antemano: allí `decision: "block"` significa
 *continuar con este motivo* en lugar de *impedir la detención* (ambas producen lo que Shoot
@@ -395,7 +397,7 @@ agente no sea de fiar: es que la verificación autodeclarada no es verificación
 **¿Funciona con Cursor o Windsurf?**
 Todavía no. Hoy son compatibles Claude Code y OpenAI Codex CLI. Cursor documenta un hook
 `stop`, pero no está claro si se dispara en la CLI, así que deliberadamente no es compatible
-en lugar de funcionar a medias — véase [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md).
+en lugar de funcionar a medias — véase [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md).
 El motor de verificación es independiente de la capa de hooks, así que añadir una plataforma
 es un adaptador pequeño, no una reescritura.
 
@@ -415,26 +417,61 @@ el archivo es idéntico byte a byte.
 
 ## Hoja de ruta
 
-**En la v1 (ahora):** detección de afirmaciones, ejecución real de comprobaciones con tiempos
-límite, modos block/warn, cortacircuitos, eventos de detención y de detención de subagente,
-adaptadores para Claude Code y Codex, historial local de verificaciones, `doctor`, aviso
-informativo de desvío de alcance y seis comandos de la CLI.
+**Lo que existe hoy:** detección de afirmaciones, ejecución real de comprobaciones con
+tiempos límite, modos block/warn, cortacircuitos, eventos de detención y de detención de
+subagente, adaptadores para Claude Code y Codex, detección de manipulación de la
+configuración, redacción de secretos, historial local de verificaciones, `doctor`, aviso
+informativo de desvío de alcance y siete comandos de la CLI.
 
-**No en la v1, con honestidad:**
+### Ideas, no compromisos
 
-- Compatibilidad con Cursor / Kiro / Antigravity: cada una bloqueada por algo concreto,
-  documentado en [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)
-- Verificación del adaptador de Codex contra una sesión real
-- Detección semántica de desvío de alcance (la actual es una heurística de recuento de archivos)
-- Cualquier tipo de panel o servicio alojado
-- Tiempos límite por comprobación (hoy hay un único valor global)
-- Ejecución paralela de comprobaciones (secuencial en la v1, a propósito)
-- Comprobaciones conscientes de Git (probar solo lo que cambió)
+Todo lo siguiente está **sin planificar y es aspiracional**. Sin fechas ni promesas: se
+enumera para que se vea la dirección. Varios puntos están bloqueados por la documentación
+de terceros, no por el esfuerzo. Detalle completo en el
+[README en inglés](../README.md#roadmap).
+
+- **Adaptador de Cursor** — Cursor documenta un hook `stop` con un campo
+  `followup_message`, muy cercano a lo que Shoot necesita. El bloqueo es que su
+  documentación no indica si los hooks de agente se disparan bajo `cursor-agent` (CLI) o
+  solo en la aplicación de escritorio. Publicar un adaptador que no haga nada en silencio
+  sería exactamente el fallo que esta herramienta existe para evitar, así que espera
+  confirmación. Véase [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md).
+- **Adaptador de Kiro** — Kiro tiene un sistema de hooks, pero no se confirmó un evento de
+  finalización capaz de bloquear. Los hooks que solo observan pueden registrar una
+  afirmación falsa; no pueden detenerla. Requiere verificación contra la documentación
+  actual de AWS.
+- **Verificación del adaptador de Codex en una sesión real** — construido según el contrato
+  documentado y con pruebas unitarias, pero nunca ejecutado contra una sesión real de
+  Codex. La ruta de Claude Code sí lo ha sido; esa asimetría debería cerrarse.
+- **Resumen de estadísticas compartible** (`shoot stats --team` o similar) — para equipos
+  que quieran mostrar su tasa de detección de afirmaciones falsas. El problema real de
+  diseño es un formato que resulte útil sin filtrar el texto de las afirmaciones ni las
+  rutas de archivos.
+- **Paquetes de frases de detección en otros idiomas** — hoy el detector es solo en inglés.
+  Una afirmación de finalización en español, chino, hindi o cualquier otro idioma pasa
+  completamente inadvertida. La tabla de patrones ya es datos y no lógica, así que es
+  sobre todo trabajo de traducción y pruebas, y es la carencia que más probablemente
+  importe a equipos fuera del ámbito anglófono.
+- **Variante opcional como GitHub Action** — ejecutar la misma lógica de verificación en
+  el PR/CI, no solo localmente mediante el hook del agente. El núcleo ya es independiente
+  de la plataforma, así que es viable sin reestructurar.
+- **Ilustración de la mascota** — el brief está en
+  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md); el arte no.
+- **Vídeo demo** — el guion está listo en [DEMO.md](../DEMO.md).
+
+### Deliberadamente no previsto
+
+- Ningún panel ni servicio alojado. Shoot sigue siendo local y sin conexión.
+- Detección semántica de desvío de alcance. La actual es una heurística de recuento de
+  archivos y lo dice con honestidad; hacerla «más lista» arriesga hacerla
+  confiadamente equivocada.
+- Tiempos límite por comprobación, ejecución paralela, comprobaciones conscientes de Git.
+  Todo defendible, nada urgente.
 
 ## Seguridad
 
 Shoot se ejecuta automáticamente con tus permisos locales, así que su modelo de amenazas
-está escrito en lugar de asumido: **[SECURITY.md](./SECURITY.md)** (en inglés). Explica qué
+está escrito en lugar de asumido: **[SECURITY.md](../SECURITY.md)** (en inglés). Explica qué
 hacen realmente las mitigaciones anteriores, qué explícitamente no hacen, y cómo informar de
 una vulnerabilidad en privado (aviso de seguridad privado de GitHub; por favor no abras una
 incidencia pública para ello).
@@ -442,7 +479,7 @@ incidencia pública para ello).
 ## Contribuir
 
 Las contribuciones son bienvenidas, especialmente formulaciones reales que el detector haya
-pasado por alto. Consulta [CONTRIBUTING.md](.github/CONTRIBUTING.md). La única regla
+pasado por alto. Consulta [CONTRIBUTING.md](../.github/CONTRIBUTING.md). La única regla
 inquebrantable: **cero dependencias de ejecución**, garantizada por la CI.
 
 Las traducciones también son bienvenidas. El README en inglés es la fuente autorizada; si
@@ -450,4 +487,4 @@ una traducción se queda atrás, envía un PR.
 
 ## Licencia
 
-[MIT](./LICENSE)
+[MIT](../LICENSE)

@@ -1,14 +1,16 @@
-[English](./README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · **Français**
+[English](../README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · **Français**
 
 # 🐼 shoot
 
-### *Ne grandis que si c’est vrai.*
+### *Sans blague, pour de vrai.*
+
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 **Empêche les agents de code IA de dire « c'est fait » sans pouvoir le prouver.**
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](./LICENSE)
+[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
 <!-- MASCOT_HERO_IMAGE -->
@@ -19,7 +21,7 @@ Une pousse de bambou ne s'élance vers le haut qu'une fois ses racines vérifié
 principe ici : votre agent n'a pas le droit de dire « corrigé » avant que les tests soient
 d'accord.
 
-> Le [README.md](./README.md) en anglais est la seule source de référence. Cette traduction
+> Le [README.md](../README.md) en anglais est la seule source de référence. Cette traduction
 > peut être en retard sur les mises à jour anglaises.
 
 ---
@@ -198,7 +200,7 @@ De plus, parce que Shoot s'exécute automatiquement avec vos permissions :
   à voler, et les paquets publiés portent des attestations de provenance.
 
 Les deux premiers points relèvent de la défense en profondeur, pas de la garantie.
-[SECURITY.md](./SECURITY.md) (en anglais) précise exactement ce qu'ils couvrent et ne
+[SECURITY.md](../SECURITY.md) (en anglais) précise exactement ce qu'ils couvrent et ne
 couvrent pas, y compris la liste complète des motifs d'expurgation.
 
 ## Configuration
@@ -313,7 +315,7 @@ n'était configuré sont exclus, car les compter d'une manière ou d'une autre f
 `shoot init` détecte la plateforme que vous utilisez à partir de `.claude/` ou `.codex/` et ne
 pose la question que s'il ne peut pas le déterminer. Le détail complet, y compris ce qui bloque
 exactement chaque plateforme non prise en charge, est dans
-[docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md).
+[docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md).
 
 Deux différences Codex à connaître d'emblée : là-bas, `decision: "block"` signifie *continuer
 avec ce motif* plutôt que *empêcher l'arrêt* (les deux produisent ce que Shoot veut), et Codex
@@ -407,7 +409,7 @@ autoproclamée n'est pas une vérification.
 Pas encore. Claude Code et OpenAI Codex CLI sont pris en charge aujourd'hui. Cursor documente
 un hook `stop`, mais son déclenchement en CLI n'est pas clair : il est donc délibérément non
 pris en charge plutôt qu'à moitié fonctionnel — voir
-[docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md). Le moteur de vérification est
+[docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md). Le moteur de vérification est
 indépendant de la couche des hooks, donc ajouter une plateforme est un petit adaptateur, pas
 une réécriture.
 
@@ -427,26 +429,62 @@ que le fichier est ensuite identique octet par octet.
 
 ## Feuille de route
 
-**Dans la v1 (maintenant) :** détection des affirmations, exécution réelle des vérifications avec
-délais d'expiration, modes block/warn, coupe-circuit, événements d'arrêt et d'arrêt de
-sous-agent, adaptateurs Claude Code et Codex, historique local de vérifications, `doctor`,
-avertissement indicatif de dérive de périmètre et six commandes de la CLI.
+**Ce qui existe aujourd'hui :** détection des affirmations, exécution réelle des
+vérifications avec délais d'expiration, modes block/warn, coupe-circuit, événements d'arrêt
+et d'arrêt de sous-agent, adaptateurs Claude Code et Codex, détection d'altération de la
+configuration, expurgation des secrets, historique local de vérifications, `doctor`,
+avertissement indicatif de dérive de périmètre et sept commandes de la CLI.
 
-**Pas dans la v1, en toute honnêteté :**
+### Des idées, pas des engagements
 
-- Prise en charge de Cursor / Kiro / Antigravity — chacune bloquée par un point précis,
-  documenté dans [docs/PLATFORM_SUPPORT.md](./docs/PLATFORM_SUPPORT.md)
-- Vérification de l'adaptateur Codex contre une session réelle
-- Détection sémantique de dérive de périmètre (l'actuelle est une heuristique de comptage)
-- Tout tableau de bord ou service hébergé
-- Délais d'expiration par vérification (une seule valeur globale aujourd'hui)
-- Exécution parallèle des vérifications (séquentielle en v1, délibérément)
-- Vérifications tenant compte de Git (ne tester que ce qui a changé)
+Tout ce qui suit est **non planifié et relève de l'intention**. Aucune date, aucune
+promesse : la liste sert à montrer la direction. Plusieurs points sont bloqués par la
+documentation d'un tiers, pas par l'effort. Détail complet dans le
+[README anglais](../README.md#roadmap).
+
+- **Adaptateur Cursor** — Cursor documente un hook `stop` avec un champ
+  `followup_message`, très proche de ce dont Shoot a besoin. Le blocage : sa documentation
+  ne précise pas si les hooks d'agent se déclenchent sous `cursor-agent` (CLI) ou
+  uniquement dans l'application de bureau. Livrer un adaptateur qui ne ferait rien en
+  silence serait précisément la défaillance que cet outil existe pour empêcher — d'où
+  l'attente d'une confirmation. Voir
+  [docs/PLATFORM_SUPPORT.md](./PLATFORM_SUPPORT.md).
+- **Adaptateur Kiro** — Kiro possède un système de hooks, mais aucun événement de fin
+  capable de bloquer n'a été confirmé. Un hook qui ne fait qu'observer peut enregistrer une
+  fausse affirmation ; il ne peut pas l'arrêter. À vérifier d'abord dans la documentation
+  actuelle d'AWS.
+- **Vérification de l'adaptateur Codex en session réelle** — construit selon le contrat
+  documenté et couvert par des tests unitaires, mais jamais exécuté contre une vraie
+  session Codex. Le chemin Claude Code l'a été ; cette asymétrie devrait disparaître.
+- **Résumé de statistiques partageable** (`shoot stats --team` ou équivalent) — pour les
+  équipes souhaitant afficher leur taux de détection de fausses affirmations. Le vrai
+  problème de conception : un format utile sans divulguer le texte des affirmations ni les
+  chemins de fichiers.
+- **Jeux d'expressions de détection non anglophones** — le détecteur est aujourd'hui
+  uniquement anglais. Une affirmation d'achèvement formulée en espagnol, chinois, hindi ou
+  toute autre langue passe totalement inaperçue. La table de motifs est déjà de la donnée
+  et non de la logique : c'est donc surtout un travail de traduction et de test, et la
+  lacune la plus susceptible de compter pour les équipes non anglophones.
+- **Variante GitHub Action optionnelle** — exécuter la même logique de vérification au
+  moment de la PR/CI, et pas seulement localement via le hook de l'agent. Le cœur est déjà
+  indépendant de la plateforme, donc faisable sans restructuration.
+- **Illustration de la mascotte** — le brief est dans
+  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md) ; le dessin non.
+- **Vidéo de démonstration** — le script est prêt dans [DEMO.md](../DEMO.md).
+
+### Délibérément non prévu
+
+- Aucun tableau de bord ni service hébergé. Shoot reste local et hors ligne.
+- Détection sémantique de dérive de périmètre. L'actuelle est une heuristique de comptage
+  de fichiers et l'assume ; la rendre « plus intelligente » risquerait de la rendre
+  confiante et fausse.
+- Délais par vérification, exécution parallèle, vérifications tenant compte de Git. Tout
+  défendable, rien d'urgent.
 
 ## Sécurité
 
 Shoot s'exécute automatiquement avec vos permissions locales : son modèle de menaces est donc
-écrit plutôt que supposé — **[SECURITY.md](./SECURITY.md)** (en anglais). Il détaille ce que
+écrit plutôt que supposé — **[SECURITY.md](../SECURITY.md)** (en anglais). Il détaille ce que
 les mesures ci-dessus font réellement, ce qu'elles ne font explicitement pas, et comment
 signaler une vulnérabilité en privé (avis de sécurité privé GitHub ; merci de ne pas ouvrir
 une issue publique pour cela).
@@ -454,7 +492,7 @@ une issue publique pour cela).
 ## Contribuer
 
 Les contributions sont bienvenues — en particulier les formulations réelles que le détecteur
-a laissées passer. Voir [CONTRIBUTING.md](.github/CONTRIBUTING.md). La seule règle
+a laissées passer. Voir [CONTRIBUTING.md](../.github/CONTRIBUTING.md). La seule règle
 absolue : **zéro dépendance d'exécution**, garantie par la CI.
 
 Les traductions sont également bienvenues. Le README anglais est la source de référence ; si
@@ -462,4 +500,4 @@ une traduction prend du retard, proposez une PR.
 
 ## Licence
 
-[MIT](./LICENSE)
+[MIT](../LICENSE)
