@@ -3,9 +3,14 @@ dist/
 dist-tests/
 *.tsbuildinfo
 
-# Shoot's own local state / config, when dogfooding in this repo
+# Shoot's own local state / config, when dogfooding in this repo.
 .shoot.config.json
 .shoot/
+
+# The generated hook shim and local hook registration. The shim hardcodes an
+# absolute path to this machine's checkout, so it is meaningless anywhere else —
+# `shoot init` regenerates both.
+.claude/
 
 .DS_Store
 *.log
