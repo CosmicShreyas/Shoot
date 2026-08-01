@@ -298,3 +298,50 @@ test('E2E: systemMessage on the pass path is the HUMAN channel and may decorate'
     assert.equal(hasAnsi(stdout), false);
   });
 });
+
+/**
+ * The stdout payload must stay plain because `commands/hook.ts` sets the plain
+ * palette before building a decision — NOT merely because the streams happen not to
+ * be a TTY under a test runner.
+ *
+ * That distinction was invisible until it bit: six tests asserting the canonical
+ * `🐼 Shoot: ` prefix passed on CI's Linux runners (stderr piped, so the ambient
+ * palette resolved to plain) and failed in a real terminal (stderr a TTY, so the
+ * lazily-resolved palette added colour). The product was always right; the suite was
+ * inheriting ambient state.
+ *
+ * FORCE_COLOR is the strongest available proxy for "the user's terminal wants
+ * colour" in a child process, since a pipe can't be made into a real TTY here. If
+ * the hook ever stops pinning the palette, this fails.
+ */
+test('E2E: stdout JSON stays plain even when the environment demands color', () => {
+  withTempDir((dir) => {
+    saveTrustedConfig(
+      dir,
+      config({ checks: { test: 'exit 0', lint: '', typecheck: '', build: '' } }),
+    );
+
+    const stdout = execFileSync(process.execPath, [CLI, 'hook'], {
+      input: JSON.stringify({
+        session_id: 'chan-forcecolor',
+        cwd: dir,
+        hook_event_name: 'Stop',
+        last_assistant_message: 'All tests pass.',
+      }),
+      encoding: 'utf8',
+      env: { ...process.env, FORCE_COLOR: '3', NO_COLOR: undefined },
+    });
+
+    // Parses at all — an escape sequence inside the JSON string would not
+    // necessarily break JSON.parse, so assert on the field directly too.
+    const parsed = JSON.parse(stdout) as { systemMessage?: string };
+
+    assert.equal(hasAnsi(stdout), false, 'no escapes anywhere in the stdout payload');
+    assert.equal(hasAnsi(parsed.systemMessage ?? ''), false, 'systemMessage must be plain');
+    assert.match(
+      parsed.systemMessage ?? '',
+      /^🐼 Shoot: /,
+      'and still opens with the canonical mascot line',
+    );
+  });
+});

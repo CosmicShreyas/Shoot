@@ -17,12 +17,19 @@ permissions:
 # the pin stays readable and reviewable when bumping.
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         node: [18, 20, 22]
-    name: Node ${{ matrix.node }}
+        # Shoot is developed on Windows and its path handling has bitten us twice
+        # (the shim's file:// URL, and a bogus .gitignore match on CRLF). One
+        # Windows leg on the supported floor catches that class before a release.
+        include:
+          - os: windows-latest
+            node: 18
+    name: Node ${{ matrix.node }} (${{ matrix.os == 'windows-latest' && 'Windows' || 'Linux' }})
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 

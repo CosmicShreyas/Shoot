@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "cd dist-tests && node --test",
+    "test": "cd dist-tests && node --import ./tests/setup.js --test",
     "pretest": "tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
