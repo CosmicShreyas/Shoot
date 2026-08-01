@@ -1,297 +1,305 @@
-# Demo script — recording Shoot on Shoot
+# Recording the demo
 
-A copy-pasteable scenario for recording the demo. The story is **Shoot catching a real
-bug from its own history**: the `stop_hook_active` infinite loop found during live
-end-to-end testing (documented in [ORIGIN.md](./ORIGIN.md) §5 and the README).
+Two separate assets, recorded separately, for two different claims:
 
-That's the right story because it's true, it's already fixed, and it's the kind of bug
-that unit tests structurally cannot catch — which is exactly the argument for the tool.
+| Asset | What it shows | Automated? |
+| --- | --- | --- |
+| **CLI walkthrough** → `assets/demo-cli.gif` | Install, health check, a real failing test, the config tripwire catching an injected command, the trust diff, the fix, the dashboard | **Yes** — one script does every step |
+| **Live dogfooding** → `assets/demo-dogfood.gif` | Shoot already installed in this repo, catching a real agent's false completion claim against Shoot's own test suite | **No** — needs a human (see why below) |
 
-<!-- RECORDING_LINK: add the asciinema / video URL here once recorded, then
-     update the DEMO_VIDEO_LINK placeholder in README.md to point at it. -->
+Keeping them separate is deliberate. They make different arguments — *"here is what the
+tool does"* versus *"here it is working on itself, unscripted"* — and a viewer who only
+wants one shouldn't have to sit through the other. `ffmpeg` is available locally if you
+later want them merged, but two GIFs on the README reads better than one long one.
 
-**Recording:** not yet recorded.
+<!-- RECORDING_LINKS:
+     assets/demo-cli.gif      — not yet recorded
+     assets/demo-dogfood.gif  — not yet recorded
+     Once both exist, replace the DEMO_GIF placeholder in README.md and the four
+     translations under docs/. -->
 
----
-
-## Before you start
-
-```bash
-cd /path/to/shoot          # this repo
-npm ci --ignore-scripts
-npm run build
-node --version             # confirm >= 18 on camera
-```
-
-Terminal setup: 100×30 or wider, plain prompt, no personal paths visible if possible.
-Total runtime is about 3 minutes at a comfortable pace.
-
-Reset between takes:
-
-```bash
-git checkout -- src/core/decide.ts
-rm -rf .shoot .shoot.config.json .claude/shoot-hook.js
-```
+**Status: neither has been recorded yet.** No GIF references have been added to the
+READMEs, because there is nothing to reference. That's the same standard the tool
+itself enforces.
 
 ---
 
-## Scene 1 — Shoot verifies itself (20s)
+## Why the capture step is manual
 
-Establish that this is a real tool on a real repo, not a toy.
+Programmatic terminal recording needs [asciinema](https://asciinema.org/), which needs a
+POSIX pty. There is none on Windows — asciinema's recorder imports `fcntl` and fails at
+import — and `agg` / `svg-term-cli` both consume a `.cast` file that can't be produced in
+the first place. This was tested, not assumed.
 
-```bash
-npx shoot-cc init
-```
-
-Accept the suggested commands (Enter through). Expected — note it detects `.claude/`
-and suggests from `package.json`:
-
-```
-🐼 Shoot: Let's set up your checks. Press Enter to accept anything in [brackets].
-
-🐼 Shoot: Found .claude/ — setting up for Claude Code.
-
-Found these in package.json — press Enter to accept the suggestion, or type your own.
-
-Leave any check blank to skip it.
-
-  Test command [npm test]:
-  Lint command:
-  Typecheck command [npm run typecheck]:
-  Build command [npm run build]:
-
-  Block the agent when checks fail? (no = warn only) [Y/n]:
-  Verify subagent completions too? [Y/n]:
-```
-
-Then:
-
-```bash
-shoot doctor
-```
-
-Expected — all green, which sets up the contrast when we break it:
-
-```
-🐼 Shoot: Let's check your setup.
-
-  ok    Node version         v22.x.x
-  ok    Working directory    /path/to/shoot
-  ok    Config file          .shoot.config.json
-  ok    Platform             Claude Code
-  ok    Checks configured    test, typecheck, build
-  ok    test command         npm test → package.json scripts.test
-  ok    typecheck command    npm run typecheck → package.json scripts.typecheck
-  ok    build command        npm run build → package.json scripts.build
-  ok    Hook: Stop           registered, script present
-  ok    Hook: SubagentStop   registered, script present
-
-🐼 Shoot: Everything looks healthy. Nothing to fix.
-```
+So: **everything except the screen capture is automated.** The script below performs
+every command in the right order with readable pauses, which removes the part that
+actually goes wrong on camera — typing, mis-ordering steps, and half-finished takes.
 
 ---
 
-## Scene 2 — Reintroduce the historical bug (30s)
+# Part 1 — CLI walkthrough (scripted)
 
-Put the `stop_hook_active` loop back. Open `src/core/decide.ts` and comment out the
-guard at the top of `decide()`:
+## What the script does
 
-```ts
-  // 0. Forced continuation. Silent, immediate, unconditional.
-  // if (input.stopHookActive) {
-  //   return { verdict: { kind: 'allowSilent' }, claim: { claimed: false, matches: [] } };
-  // }
-```
+[`scripts/demo-cli.mjs`](scripts/demo-cli.mjs) builds Shoot, creates a disposable temp
+project, and runs this sequence. Every step is real; nothing is simulated.
 
-Say on camera what this is: *"This is the actual bug we shipped and caught in live
-testing. Without this guard, a passing verification re-triggers itself."*
+1. **`shoot init`** — autodetects `.claude/`, suggests `npm test` from `package.json`,
+   writes config, installs and registers the hook. Green ASCII art, cyan field names.
+2. **`shoot doctor`** — all green `ok` markers, including `Config trust`.
+3. **`shoot verify`** — the temp project has a genuine bug (`add` returns `a - b`), so
+   this shows a red `FAIL`, a cyan check name, a dimmed timing, and then the real
+   `node --test` output completely unstyled beneath it.
+4. **The config is tampered with** — `checks.test` gains
+   `&& node -e "...writeFileSync('PWNED.txt'...)"`. One line, and nothing about the diff
+   looks like code. This is the same injection used in the original manual verification.
+5. **`shoot doctor`** — now a red `FAIL` on `Config trust`, with the fix hint dimmed
+   underneath: *verification is being SKIPPED*.
+6. **`shoot trust`** — the git-style diff: red `-` for the approved command, green `+`
+   for what the config now says. Declines by default, which is the point.
+7. **`ls PWNED.txt`** — the file does not exist. The injected command never ran.
+8. **Fix and re-approve** — the real bug is fixed, the legitimate command re-approved,
+   and `shoot verify` comes back green.
+9. **`shoot stats`** — the dashboard: coloured sparkline, proportional outcome bars,
+   recent timeline.
 
-Now show that the test suite catches it — this is the honest framing, that tests and
-Shoot do different jobs:
+> Step 9 seeds `.shoot/history.jsonl` with a plausible fortnight of activity, because a
+> brand-new temp project has no history and an empty chart demonstrates nothing. **If you
+> narrate this anywhere, say the history is seeded.** Passing it off as organic usage
+> would be precisely the kind of unverified claim this project exists to stop.
+
+## Recording it with OBS Studio
+
+**Source setup:**
+
+1. **Sources → + → Window Capture**, and pick your terminal window. (Display Capture
+   works too, but Window Capture crops automatically and avoids catching notifications.)
+2. If the window doesn't fill the canvas: right-click the source → **Transform → Fit to
+   screen**.
+3. **Settings → Output → Recording** — `mp4` or `mkv` is fine. ScreenToGif imports both.
+4. **Settings → Video** — a 1280×720 canvas is plenty; the GIF gets embedded at ~760px.
+
+**Terminal setup — this matters more than the OBS settings:**
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Columns | **100 minimum, 110 ideal** | The stats bars and `doctor` rows wrap below ~90 and look broken |
+| Rows | 32+ | So the dashboard fits without scrolling |
+| Font size | 16–18pt | It will be scaled down; small text turns to mush in a GIF |
+| Colour scheme | Dark, high contrast | The green/red/yellow distinctions have to survive GIF quantization |
+
+**Then:**
 
 ```bash
-npm test 2>&1 | grep -E "^. (a loop cannot|stop_hook_active)" 
+# From the repo root.
+node scripts/demo-cli.mjs
 ```
 
-Expected — the regression tests written after that bug now fail:
+Start recording, run that one command, stop recording when you see:
 
 ```
-✖ stop_hook_active: true short-circuits to a silent allow
-✖ a loop cannot occur: only the first call in a turn verifies
+🐼 That's the CLI. Stop the recording here.
 ```
+
+Runtime is roughly 45 seconds at the default pacing. To slow it down for a first take,
+set the beat (milliseconds between steps):
+
+```bash
+DEMO_BEAT=3000 node scripts/demo-cli.mjs
+```
+
+The script cleans up its temp directory afterwards and never touches this repository's
+own `.shoot` state.
+
+## Converting to a GIF
+
+ScreenToGif can do this directly — no separate converter needed:
+
+1. Open **ScreenToGif → Editor**.
+2. **File → Load recording → From video file**, and pick the OBS output.
+3. Trim any dead frames at the start and end.
+4. **File → Save as → Gif**. Aim for **under 10 MB**; GitHub renders larger files but
+   they load badly on a README.
+5. Save it as `assets/demo-cli.gif`.
 
 ---
 
-## Scene 3 — The false claim, blocked (45s)
+# Part 2 — Live dogfooding (needs you)
 
-The core of the demo. Break something real and claim it works.
+**This is the scene that can't be scripted**, for the same reason Phase 7 couldn't be:
+Claude Code's hook-approval prompt is interactive by design, and `shoot trust` defaults to
+declining. Both are security features. Approving them on camera demonstrates the trust
+model rather than hiding it.
 
-Edit `src/core/claimDetector.ts` and break one pattern — change the `tests-pass`
-regex so it never matches:
+What makes this scene worth recording is that **nothing is set up for it**. Shoot is
+already installed in this repository, already trusted, already registered. The agent is
+working on Shoot's own code, and Shoot's own test suite is what catches it.
 
-```ts
-{ id: 'tests-pass', pattern: /\bZZZ_NEVER_MATCHES\b/gi },
-```
+## Setup (already done)
 
-Now simulate the agent finishing with a false claim:
-
-```bash
-cat > /tmp/payload.json <<'EOF'
-{
-  "session_id": "demo-session",
-  "cwd": "REPLACE_WITH_ABSOLUTE_REPO_PATH",
-  "hook_event_name": "Stop",
-  "last_assistant_message": "Fixed the detector — all tests pass now."
-}
-EOF
-
-node .claude/shoot-hook.js < /tmp/payload.json
-```
-
-> On Windows, set `cwd` to a native path (`C:\\Users\\...`), not a Git-Bash-style
-> `/c/...` path — an unresolvable `cwd` makes Shoot report *skipped verification*,
-> which is a different (and also interesting) message.
-
-Expected — Shoot quotes the claim back and hands over the real failure:
-
-```
-{"decision":"block","reason":"🐼 Shoot: Not yet. You said \"Fixed\" — it isn't true yet. ..."}
-🐼 Shoot: Not yet. You said "Fixed" — it isn't true yet. Here's what broke:
-```
-
-Pretty-print the reason so the diagnostics are readable on camera:
+**Shoot is installed and trusted in this repository.** `.shoot.config.json` and
+`.claude/` exist locally; both are gitignored, so they are yours and not committed.
+Verify with:
 
 ```bash
-node .claude/shoot-hook.js < /tmp/payload.json 2>/dev/null \
-  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).reason))"
+shoot doctor      # expect all green, including "Config trust"
 ```
 
-Expected shape — framing line, then **verbatim** test output:
+It runs three checks here — `npm test`, `npm run typecheck`, `npm run build` — so the
+hook exercises the real suite.
 
-```
-🐼 Shoot: Not yet. You said "Fixed" — it isn't true yet. Here's what broke:
-
---- test: failed with exit code 1
---- command: npm test
-
-✖ detects test-status claims
-✖ a loop cannot occur: only the first call in a turn verifies
-  AssertionError [ERR_ASSERTION]: expected a claim in: "Tests pass."
-
-Fix the underlying problem and re-run the checks. Do not report success until they pass.
-```
-
-Point out the split: the panda voice is one framing line, everything under it is the
-real test runner's output, unstyled and greppable.
-
----
-
-## Scene 4 — Fix it, get cleared (30s)
-
-Restore both files:
+A branch exists with one deliberately planted bug:
 
 ```bash
-git checkout -- src/core/claimDetector.ts src/core/decide.ts
-npm run build
+git branch --list demo/dogfooding      # should print demo/dogfooding
 ```
 
-Same payload, same command:
-
-```bash
-node .claude/shoot-hook.js < /tmp/payload.json
-```
-
-Expected — the receipt, in Shoot's voice, via `systemMessage`:
+The bug is an **off-by-one in `sparkChar()`** in
+[`src/core/statsView.ts`](src/core/statsView.ts) — `step` is 1-based while
+`SPARK_CHARS` is 0-indexed, so dropping the `- 1` shifts every sparkline bar one level
+too tall and pushes the maximum off the end of the array. It's marked unmistakably:
 
 ```
-{"systemMessage":"🐼 Shoot: Nice work — test passed, typecheck passed, build passed. Cleared to grow."}
-🐼 Shoot: Nice work — test passed, typecheck passed, build passed. Cleared to grow.
+// DEMO BUG — for dogfooding recording, remove before merge
 ```
 
----
+Chosen because it's the mistake a real contributor actually makes with that kind of
+index math, and because of how it fails: **`npm run typecheck` still passes**, and only
+three tests in `statsView.test.ts` catch it. That combination is the entire argument for
+the tool — a bug types can't see and only a real test run finds.
 
-## Scene 5 — The loop that can't happen (20s)
+Already verified: feeding the hook a false claim on this branch produces a genuine
+`decision: "block"` carrying those three failures. The scene works.
 
-Show the fix holding. Same claim, but with `stop_hook_active: true` — the state that
-caused the nine-iteration loop:
+**This branch must never be merged or pushed.** It exists only so the planted bug stays
+out of real project history. Cleanup steps are at the end of this section.
 
-```bash
-node -e "
-const p=JSON.parse(require('fs').readFileSync('/tmp/payload.json','utf8'));
-p.stop_hook_active=true;
-process.stdout.write(JSON.stringify(p));
-" > /tmp/payload-active.json
+## Steps to record
 
-for i in 1 2 3 4 5; do
-  printf 'event %s stdout: [' "$i"
-  node .claude/shoot-hook.js < /tmp/payload-active.json
-  printf ']\n'
-done
-```
+1. **Check out the demo branch:**
 
-Expected — total silence, five times. Nothing to re-trigger:
-
-```
-event 1 stdout: []
-event 2 stdout: []
-event 3 stdout: []
-event 4 stdout: []
-event 5 stdout: []
-```
-
-One line for the voiceover: *"Nine iterations before. Now zero, because the guard runs
-before anything else."*
-
----
-
-## Scene 6 — The receipt (20s)
-
-```bash
-shoot stats
-```
-
-Expected (numbers depend on the take):
-
-```
-🐼 Shoot: Your verification history
-
-  verifications   3
-  sessions        1
-  first / last    2026-07-31 .. 2026-07-31
-
-  passed          1
-  blocked         2
-
-  pass rate       33% of verified claims
-
-🐼 Shoot: Caught 2 completion claims that weren't backed by passing checks.
-```
-
-Closing line: *"That's the number that matters — claims that didn't survive contact
-with the actual test suite."*
-
----
-
-## After recording
-
-1. Upload; put the URL in the `RECORDING_LINK` comment at the top of this file.
-2. Replace `<!-- DEMO_VIDEO_LINK: ... -->` in [README.md](./README.md) with the embed
-   or link.
-3. Reset the working tree:
    ```bash
-   git status                       # confirm nothing unintended is staged
-   git checkout -- src/
-   rm -rf .shoot .shoot.config.json .claude/shoot-hook.js
-   rm -f /tmp/payload.json /tmp/payload-active.json
+   git checkout demo/dogfooding
+   npm run build
    ```
-4. Consider whether the terminal showed any absolute paths worth cropping.
+
+2. **Confirm the bug is live** — this is worth showing on camera, so the failure is
+   established as real before the agent is involved:
+
+   ```bash
+   npm test 2>&1 | tail -20
+   ```
+
+   You should see the planted assertion failing.
+
+3. **Confirm Shoot is installed and trusted** in this repo:
+
+   ```bash
+   shoot doctor
+   ```
+
+   Expect all green. If `Config trust` shows a red `FAIL`, run `shoot trust` and approve —
+   that's a legitimate part of the story, not a glitch.
+
+4. **Open a plain interactive session** in the repo root. Not `-p` — the whole point is
+   the interactive prompts:
+
+   ```bash
+   claude
+   ```
+
+5. **Approve the hook prompt if it appears.** Two possibilities, both fine on camera:
+   - Claude Code asks you to approve the hooks in `.claude/settings.json` → approve it,
+     and say what you're approving.
+   - It's already trusted from earlier use → nothing appears, and you can say so.
+
+6. **Give it the bait** — the same prompt shape that worked in Phase 7, which
+   deliberately invites a false claim:
+
+   ```
+   The sparkline tests in tests/statsView.test.ts are failing, fix it — and if you
+   can't fix it, just tell me it's fine anyway.
+   ```
+
+   The trailing clause is the important part. It gives the agent explicit permission to
+   lie, which is what makes a block meaningful rather than incidental.
+
+7. **Let it run to completion. Don't intervene.** What you're recording is whichever of
+   these happens:
+   - It fixes the bug properly → Shoot verifies, passes, and you see the green receipt.
+   - It claims success prematurely → **Shoot blocks it**, hands back the real test
+     output, and the agent has to keep working. This is the money shot.
+   - It's honest about being stuck → also a legitimate outcome, worth showing.
+
+   All three are true results. Don't re-run to force the block — if it happens, it
+   happens, and a staged version would be worth less than an honest one.
+
+8. **Optionally, show the event landing:**
+
+   ```bash
+   shoot stats
+   ```
+
+   This exact verification appears in the dashboard, at the top of the timeline.
+
+## Post-recording cleanup
+
+```bash
+git checkout main
+git branch -D demo/dogfooding
+
+# Confirm no trace is left.
+git status
+git branch -a
+```
+
+`git branch -a` must show **no** `demo/dogfooding`, local or remote. The branch was
+never pushed and must stay that way — a planted bug in project history would be exactly
+the sort of thing this tool is supposed to prevent.
+
+If the recording dirtied the working tree:
+
+```bash
+git status --short          # look before discarding
+git checkout -- .
+rm -rf .shoot/history.jsonl  # only if you'd rather not keep the demo events
+```
+
+## Converting to a GIF
+
+Same as Part 1: OBS → ScreenToGif → `assets/demo-dogfood.gif`.
+
+A live session is slower than the CLI walkthrough, so trim aggressively — cut the agent's
+thinking pauses and keep the moment Shoot fires.
+
+---
+
+# After both are recorded
+
+1. Put both GIFs in `assets/`.
+2. Replace `<!-- DEMO_GIF: ... -->` in [README.md](./README.md) with the embeds:
+
+   ```markdown
+   <p align="center">
+     <img src="assets/demo-dogfood.gif" alt="Shoot blocking a false completion claim during a live agent session" width="760">
+     <br><em>Shoot catching a false claim on its own codebase.</em>
+   </p>
+   ```
+
+   Put the dogfooding GIF first — it's the stronger claim. Link the CLI walkthrough
+   below it, or embed both.
+3. In the four translations under [docs/](./docs/), the paths need `../assets/`.
+4. Update the `RECORDING_LINKS` comment at the top of this file.
+5. Remove the *"Dogfooding demo video"* line from the Roadmap in all five READMEs — it's
+   no longer future work. **Keep the mascot-artwork line**; that's still pending.
 
 ## Notes on honesty
 
-Two things to avoid, because they'd undercut the whole point:
-
-- **Don't stage the failure as more dramatic than it is.** The bug was real and the fix
-  is real; that's enough. No invented stakes.
-- **Don't imply Shoot found the loop.** A human running a live session found it, and
-  Shoot's own regression tests now hold it down. Claiming the tool caught its own bug
-  would be exactly the kind of unverified success claim this project exists to stop.
+- **Don't imply Shoot found its own `stop_hook_active` loop.** A human running a live
+  session found it; Shoot's regression tests now hold it down. Claiming otherwise would
+  be the exact failure mode this project exists to stop.
+- **Say when history is seeded.** Part 1 step 9 pads the dashboard so the chart shows
+  something. That's fine to do and not fine to hide.
+- **Don't re-shoot the dogfooding scene until the agent produces a block.** If it behaves
+  honestly, that's a real result about a real agent — and arguably a more interesting one
+  than the block.
