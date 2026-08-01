@@ -79,6 +79,23 @@ export function colorDisabledByEnv(env: NodeJS.ProcessEnv = process.env): boolea
 }
 
 /**
+ * Is color force-enabled by environment?
+ *
+ * `FORCE_COLOR` is the widely-followed counterpart to `NO_COLOR`. It matters for
+ * capturing demo output, where the recorder pipes stdout (so `isTTY` is false) but
+ * the colour is the whole point of the recording.
+ *
+ * `NO_COLOR` still wins: a user who has explicitly opted out should not have colour
+ * forced back on by a variable some tool set for them.
+ */
+export function colorForcedByEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  const value = env['FORCE_COLOR'];
+  if (value === undefined) return false;
+  // `FORCE_COLOR=0` is the documented way to mean "no", matching other tools.
+  return value !== '0' && value.toLowerCase() !== 'false';
+}
+
+/**
  * Should this stream get color?
  *
  * `isTTY` is undefined on a non-TTY stream, so an explicit `=== true` avoids
@@ -88,7 +105,9 @@ export function shouldColor(
   stream: { isTTY?: boolean | undefined } | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
+  // NO_COLOR always wins — an explicit opt-out is not overridable.
   if (colorDisabledByEnv(env)) return false;
+  if (colorForcedByEnv(env)) return true;
   return stream?.isTTY === true;
 }
 
