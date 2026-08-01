@@ -1,21 +1,37 @@
+<div align="center">
+
 [English](../README.md) · [中文](./README.zh-CN.md) · **हिन्दी** · [Español](./README.es.md) · [Français](./README.fr.md)
 
-# 🐼 shoot
+</div>
+
+<table border="0">
+<tr>
+<td width="320" valign="middle" align="center">
+<img src="../assets/mascot.png" alt="Shoot का मैस्कॉट: बाँस का कोंपल थामे एक पांडा।" width="290">
+</td>
+<td valign="middle">
+
+# Shoot
 
 ### *सच में, बिल्कुल सच।*
 
-<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
+एक सत्यापन द्वार, जो AI कोडिंग एजेंट को बिना सबूत ‘हो गया’ कहने से रोकता है।
+एजेंट के रुकने से पहले यह आपके असली टेस्ट चलाता है — और विफल होने पर उसे रोक देता है।
 
-**AI कोडिंग एजेंट को "हो गया" कहने से रोकता है — जब तक वह इसे वास्तव में साबित न कर सके।**
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
+[![license](https://img.shields.io/github/license/CosmicShreyas/Shoot)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
-<!-- MASCOT_HERO_IMAGE -->
+</div>
 
-<!-- DEMO_VIDEO_LINK: add after recording, see DEMO.md -->
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 बाँस का कोंपल तब तक ऊपर नहीं बढ़ता जब तक उसकी जड़ें मज़बूत साबित न हो जाएँ। यही बात यहाँ भी
 लागू होती है: जब तक टेस्ट सहमत न हों, आपका एजेंट "ठीक कर दिया" नहीं कह सकता।
@@ -421,8 +437,6 @@ Codex के दो अंतर पहले से जान लेना उ�
   ज़्यादा मायने रखने वाली कमी है।
 - **वैकल्पिक GitHub Action रूप** — वही सत्यापन तर्क PR/CI समय पर चलाना, न कि केवल स्थानीय एजेंट
   हुक के ज़रिए। कोर पहले से प्लैटफ़ॉर्म-निरपेक्ष है, इसलिए पुनर्संरचना की ज़रूरत नहीं।
-- **मैस्कॉट चित्रकला** — ब्रीफ़
-  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md) में है; कलाकृति नहीं।
 - **डॉगफ़ूडिंग डेमो वीडियो** — स्क्रिप्ट [DEMO.md](../DEMO.md) में तैयार है।
 
 ### जानबूझकर योजना में नहीं

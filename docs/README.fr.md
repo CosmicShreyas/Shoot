@@ -1,21 +1,38 @@
+<div align="center">
+
 [English](../README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · **Français**
 
-# 🐼 shoot
+</div>
+
+<table border="0">
+<tr>
+<td width="320" valign="middle" align="center">
+<img src="../assets/mascot.png" alt="Mascotte de Shoot : un panda serrant une pousse de bambou." width="290">
+</td>
+<td valign="middle">
+
+# Shoot
 
 ### *Sans blague, pour de vrai.*
 
-<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
+Le garde-fou de vérification qui empêche les agents de code IA d’annoncer
+« c’est fait » sans preuve. Il exécute vos vrais tests avant de laisser l’agent
+s’arrêter, et le bloque s’ils échouent.
 
-**Empêche les agents de code IA de dire « c'est fait » sans pouvoir le prouver.**
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
+[![license](https://img.shields.io/github/license/CosmicShreyas/Shoot)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
-<!-- MASCOT_HERO_IMAGE -->
+</div>
 
-<!-- DEMO_VIDEO_LINK: add after recording, see DEMO.md -->
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 Une pousse de bambou ne s'élance vers le haut qu'une fois ses racines vérifiées. Même
 principe ici : votre agent n'a pas le droit de dire « corrigé » avant que les tests soient
@@ -468,8 +485,6 @@ documentation d'un tiers, pas par l'effort. Détail complet dans le
 - **Variante GitHub Action optionnelle** — exécuter la même logique de vérification au
   moment de la PR/CI, et pas seulement localement via le hook de l'agent. Le cœur est déjà
   indépendant de la plateforme, donc faisable sans restructuration.
-- **Illustration de la mascotte** — le brief est dans
-  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md) ; le dessin non.
 - **Vidéo de démonstration** — le script est prêt dans [DEMO.md](../DEMO.md).
 
 ### Délibérément non prévu

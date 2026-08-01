@@ -1,21 +1,37 @@
+<div align="center">
+
 [English](../README.md) · **中文** · [हिन्दी](./README.hi.md) · [Español](./README.es.md) · [Français](./README.fr.md)
 
-# 🐼 shoot
+</div>
+
+<table border="0">
+<tr>
+<td width="320" valign="middle" align="center">
+<img src="../assets/mascot.png" alt="Shoot 吉祥物：一只抱着竹笋的熊猫。" width="290">
+</td>
+<td valign="middle">
+
+# Shoot
 
 ### *不掺假，真的。*
 
-<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
+一道验证关卡，让 AI 编程助手无法在没有证据的情况下声称「完成了」。
+它会在助手结束对话之前真实运行你的测试——如果没通过，就拦住它。
 
-**除非能真正证明，否则不让 AI 编程助手说"完成了"。**
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
+[![license](https://img.shields.io/github/license/CosmicShreyas/Shoot)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
-<!-- MASCOT_HERO_IMAGE -->
+</div>
 
-<!-- DEMO_VIDEO_LINK: add after recording, see DEMO.md -->
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 竹笋只有在根系确认稳固之后才会向上生长。这个工具也是同样的道理：
 在测试通过之前，你的 AI 助手没有资格说"已修复"。
@@ -404,8 +420,6 @@ Shoot 自己运行命令、自己读取真实退出码，助手无法跳过、�
   也是对英语之外团队最可能产生实际影响的缺口。
 - **可选的 GitHub Action 变体**——在 PR / CI 阶段运行同一套验证逻辑，而不仅是通过本地
   助手钩子。核心逻辑本已与平台无关，因此无需重构即可实现。
-- **吉祥物插画**——设计说明见
-  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md)，插画本身尚不存在。
 - **自用演示视频**——脚本见 [DEMO.md](../DEMO.md)，可随时录制。
 
 ### 明确不打算做

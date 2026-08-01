@@ -1,21 +1,38 @@
+<div align="center">
+
 [English](../README.md) · [中文](./README.zh-CN.md) · [हिन्दी](./README.hi.md) · **Español** · [Français](./README.fr.md)
 
-# 🐼 shoot
+</div>
+
+<table border="0">
+<tr>
+<td width="320" valign="middle" align="center">
+<img src="../assets/mascot.png" alt="Mascota de Shoot: un panda abrazando un brote de bambú." width="290">
+</td>
+<td valign="middle">
+
+# Shoot
 
 ### *Sin cuentos, de verdad.*
 
-<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
+La barrera de verificación que impide a los agentes de programación con IA decir
+«listo» sin pruebas. Ejecuta tus pruebas reales antes de dejar que el agente se
+detenga, y lo bloquea si fallan.
 
-**Impide que los agentes de programación con IA digan «listo» a menos que puedan demostrarlo.**
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](../LICENSE)
+[![license](https://img.shields.io/github/license/CosmicShreyas/Shoot)](../LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
-<!-- MASCOT_HERO_IMAGE -->
+</div>
 
-<!-- DEMO_VIDEO_LINK: add after recording, see DEMO.md -->
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 Un brote de bambú no crece hacia arriba hasta que sus raíces están comprobadas. La misma
 idea: tu agente no puede decir «arreglado» hasta que las pruebas estén de acuerdo.
@@ -455,8 +472,6 @@ de terceros, no por el esfuerzo. Detalle completo en el
 - **Variante opcional como GitHub Action** — ejecutar la misma lógica de verificación en
   el PR/CI, no solo localmente mediante el hook del agente. El núcleo ya es independiente
   de la plataforma, así que es viable sin reestructurar.
-- **Ilustración de la mascota** — el brief está en
-  [assets/mascot-placeholder.md](../assets/mascot-placeholder.md); el arte no.
 - **Vídeo demo** — el guion está listo en [DEMO.md](../DEMO.md).
 
 ### Deliberadamente no previsto

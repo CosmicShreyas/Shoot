@@ -1,24 +1,37 @@
+<div align="center">
+
 **English** · [中文](./docs/README.zh-CN.md) · [हिन्दी](./docs/README.hi.md) · [Español](./docs/README.es.md) · [Français](./docs/README.fr.md)
 
-# 🐼 shoot
+</div>
+
+<table border="0">
+<tr>
+<td width="320" valign="middle" align="center">
+<img src="assets/mascot.png" alt="Shoot mascot: a panda hugging a bamboo shoot." width="290">
+</td>
+<td valign="middle">
+
+# Shoot
 
 ### *No cap, for real.*
 
-<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
+The verification gate that stops AI coding agents from claiming "done" without proof.
+It runs your real tests before letting the agent stop — and blocks it if they fail.
 
-**Stops AI coding agents from saying "done" unless it can actually prove it.**
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 [![npm version](https://img.shields.io/npm/v/shoot-cc.svg)](https://www.npmjs.com/package/shoot-cc)
 [![CI](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml/badge.svg)](https://github.com/CosmicShreyas/Shoot/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/shoot-cc.svg)](./LICENSE)
+[![license](https://img.shields.io/github/license/CosmicShreyas/Shoot)](./LICENSE)
 [![node](https://img.shields.io/node/v/shoot-cc.svg)](https://nodejs.org)
 
-<!-- MASCOT_HERO_IMAGE -->
-<!-- Hero image goes here once the art exists — see assets/mascot-placeholder.md
-     for the brief. Suggested: <p align="center"><img src="assets/mascot.png"
-     alt="A small panda cub hugging a bamboo shoot" width="360"></p> -->
+</div>
 
-<!-- DEMO_VIDEO_LINK: add after recording, see DEMO.md -->
+<!-- DEMO_GIF: add after recording via ScreenToGif, see DEMO.md -->
 
 A bamboo shoot doesn't get to stretch upward until its roots check out. Same idea:
 your agent doesn't get to say "fixed" until the tests agree.
@@ -490,8 +503,6 @@ the priorities. Several are blocked on someone else's documentation rather than 
 - **Optional GitHub Action variant** — run the same verification logic at PR/CI time, not
   only locally via the agent hook. The core is already platform-neutral, so this is
   plausible without restructuring.
-- **Mascot artwork** — the brief exists at
-  [assets/mascot-placeholder.md](./assets/mascot-placeholder.md); the art does not.
 - **Dogfooding demo video** — the script exists at [DEMO.md](./DEMO.md), ready to record.
 
 ### Deliberately not planned
