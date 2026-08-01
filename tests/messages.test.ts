@@ -50,10 +50,23 @@ test('no module builds its own voiced line via prefix()', () => {
 });
 
 test('every exported message is a non-empty string', () => {
-  // PANDA/ART are constants; prefix is a builder; setPalette/withoutColor are
+  // Constants, builders, palette controls, and banner helpers - none is "a message".
   // palette controls, not messages — calling setPalette with a dummy arg would
   // poison the module's palette state for every test that follows.
-  const skip = new Set(['PANDA', 'ART', 'prefix', 'setPalette', 'withoutColor']);
+  // Constants, builders, palette controls, and banner helpers — none of these are
+  // "a message", and several would misbehave if called with a dummy argument.
+  const skip = new Set([
+    'PANDA',
+    'TAGLINE',
+    'BANNER_MIN_WIDTH',
+    'prefix',
+    'setPalette',
+    'withoutColor',
+    'banner',
+    'compactBanner',
+    'bannerFor',
+    'displayWidth',
+  ]);
 
   // Render plain so assertions are about wording, not escape codes.
   messages.setPalette(plain);
@@ -137,7 +150,76 @@ test('pluralization is handled', () => {
   assert.match(messages.uninstallPreserving(2), /2 hook entries /);
 });
 
-test('the ASCII art is present for init', () => {
-  assert.match(messages.ART, /shoot/);
-  assert.match(messages.ART, /verify before you grow/);
+test('the banner contains the wordmark, bamboo, panda, and tagline', () => {
+  const b = messages.banner();
+  assert.match(b, /___\| \|__/, 'the "shoot" wordmark');
+  assert.match(b, /\|=/, 'bamboo stalk segments');
+  assert.match(b, /🐼/, 'the panda');
+  assert.ok(b.includes(messages.TAGLINE), 'the tagline');
+});
+
+test('the banner uses only ASCII, box-drawing, and the panda', () => {
+  // An earlier version used `ǂ` (U+01C2), which terminal fonts substitute or render
+  // at the wrong width, destroying the alignment. Box-drawing characters are the
+  // only non-ASCII allowed, because they are near-universally single-width.
+  const allowedNonAscii = /[─│╭╮╰╯├┤🐼]/u;
+  const offenders = [...messages.banner()].filter(
+    (ch) => ch.charCodeAt(0) > 0x7e && !allowedNonAscii.test(ch),
+  );
+  assert.deepEqual(offenders, [], `unexpected characters: ${offenders.join(' ')}`);
+});
+
+test('every banner line is exactly the same display width', () => {
+  // THE bug this guards: the panda is two cells wide but one code point, so a
+  // hand-padded border lands a column short on whichever row contains it. Caught by
+  // rendering, not by reading — hence an assertion rather than a comment.
+  for (const b of [messages.banner(), messages.compactBanner()]) {
+    const widths = b.split('\n').map(messages.displayWidth);
+    const first = widths[0];
+    for (const [i, w] of widths.entries()) {
+      assert.equal(w, first, `line ${i} is ${w} cells, expected ${first}\n${b}`);
+    }
+  }
+});
+
+test('the compact banner is used when the terminal is too narrow', () => {
+  const full = messages.banner();
+  const compact = messages.compactBanner();
+
+  assert.equal(messages.bannerFor(100), full, 'wide terminal gets the full banner');
+  assert.equal(messages.bannerFor(40), compact, 'narrow terminal gets the compact one');
+  // At exactly the threshold the full banner must still fit.
+  assert.equal(messages.bannerFor(messages.BANNER_MIN_WIDTH), full);
+  assert.equal(messages.bannerFor(messages.BANNER_MIN_WIDTH - 1), compact);
+});
+
+test('an unknown terminal width assumes 80 and gets the full banner', () => {
+  assert.equal(messages.bannerFor(undefined), messages.banner());
+});
+
+test('displayWidth counts the panda as two cells', () => {
+  assert.equal(messages.displayWidth('ab'), 2);
+  assert.equal(messages.displayWidth('🐼'), 2);
+  assert.equal(messages.displayWidth('  🐼  x'), 7);
+});
+
+test('the tagline matches the README, so the two cannot drift', () => {
+  // Two levels up from dist-tests/src reaches the repo root, whether running from
+  // source or from the compiled output.
+  const readme = readFileSync(join(SRC, '..', '..', 'README.md'), 'utf8');
+  assert.match(
+    readme,
+    new RegExp(`\\*${messages.TAGLINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*`),
+    `README tagline does not match messages.TAGLINE ("${messages.TAGLINE}")`,
+  );
+});
+
+test('the banner fits inside an 80-column terminal', () => {
+  const widest = Math.max(...messages.banner().split('\n').map(messages.displayWidth));
+  assert.ok(widest <= 72, `widest line is ${widest} columns; must leave room at 80`);
+});
+
+test('the compact banner fits a genuinely narrow terminal', () => {
+  const widest = Math.max(...messages.compactBanner().split('\n').map(messages.displayWidth));
+  assert.ok(widest <= 40, `compact banner is ${widest} columns`);
 });

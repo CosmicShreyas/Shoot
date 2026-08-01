@@ -173,7 +173,9 @@ export async function init(_argv: string[]): Promise<number> {
     .filter(([, v]) => v !== '')
     .map(([k, v]) => `    ${palette.accent(k.padEnd(10))} ${v}`);
 
-  process.stdout.write(palette.ok(messages.ART));
+  // The banner carries its own wordmark and tagline, and picks a compact variant
+  // when the terminal is too narrow for the full box.
+  process.stdout.write(`${palette.ok(messages.bannerFor())}\n`);
   process.stdout.write(`\n${messages.initConfigured()}\n\n`);
   process.stdout.write(
     configured.length > 0

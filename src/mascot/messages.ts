@@ -19,6 +19,14 @@ import { plain, terminalPalette, type Palette } from './colors.js';
 export const PANDA = '🐼';
 
 /**
+ * The project tagline, printed beside the banner art after `init`.
+ *
+ * Kept here rather than inside ART so the art stays purely pictorial and the tagline
+ * can be reworded without redrawing bamboo. Must match the READMEs.
+ */
+export const TAGLINE = 'No cap, for real.';
+
+/**
  * Which palette the voiced helpers use.
  *
  * Resolved lazily on first use rather than at module load, so a test (or a caller)
@@ -53,14 +61,97 @@ export function withoutColor<T>(fn: () => T): T {
   }
 }
 
-/** Shown once after a successful `shoot init`. */
-export const ART = String.raw`
-      .--.   .--.
-     ( 🐼 )_( 🐼 )      shoot
-      '--'   '--'
-       \  |ǂ|  /
-          |ǂ|            verify before you grow
-`;
+// ---------------------------------------------------------------------------
+// The banner
+// ---------------------------------------------------------------------------
+
+/**
+ * HUMAN CHANNEL ONLY — pure decoration, never reachable from the agent channel.
+ * `init` is a CLI command; no hook path prints any of this.
+ *
+ * CHARACTER DISCIPLINE
+ *
+ * The wordmark and bamboo use only base ASCII (`_ | / \ = ( )`), which every
+ * monospace font renders at exactly one cell. The border uses box-drawing
+ * characters, which are near-universally supported at single width. An earlier
+ * version used `ǂ` (U+01C2, a click consonant) and fell apart in fonts that
+ * substituted it — hence the rule, and the test that enforces it.
+ *
+ * WIDTH DISCIPLINE
+ *
+ * The panda emoji occupies TWO terminal cells but is ONE JS code point, so
+ * hand-padded borders land a column short on whichever row contains it. Padding is
+ * therefore computed from display width via `displayWidth()`, never from `.length`.
+ * That bug was caught by rendering, not by reading the source.
+ */
+
+/** Display width in terminal cells. Emoji count as two. */
+export function displayWidth(text: string): number {
+  const emoji = (text.match(/\p{Extended_Pictographic}/gu) ?? []).length;
+  return [...text].length + emoji;
+}
+
+/** The `shoot` wordmark, standard figlet-style lowercase. */
+const WORDMARK: readonly string[] = [
+  '     _                 _',
+  ' ___| |__   ___   ___ | |_',
+  "/ __| '_ \\ / _ \\ / _ \\| __|",
+  '\\__ \\ | | | (_) | (_) | |_',
+  '|___/_| |_|\\___/ \\___/ \\__|',
+];
+
+/** Bamboo fanning from a single base — the brand metaphor, beside the wordmark. */
+const BAMBOO: readonly string[] = [
+  '|=  |=  |=',
+  ' \\  |  /',
+  '  \\_|_/',
+  '    |',
+  ' ___|___',
+];
+
+/** Inner width of the full banner box, in cells. */
+const BANNER_INNER = 48;
+
+/** Terminals narrower than this get the compact banner instead. */
+export const BANNER_MIN_WIDTH = BANNER_INNER + 2;
+
+function padTo(text: string, cells: number): string {
+  return text + ' '.repeat(Math.max(0, cells - displayWidth(text)));
+}
+
+/** Draw a rounded box around content lines. `'---'` becomes a horizontal rule. */
+function drawBox(lines: readonly string[], inner: number): string {
+  const out = [`╭${'─'.repeat(inner)}╮`];
+  for (const line of lines) {
+    out.push(line === '---' ? `├${'─'.repeat(inner)}┤` : `│${padTo(line, inner)}│`);
+  }
+  out.push(`╰${'─'.repeat(inner)}╯`);
+  return out.join('\n');
+}
+
+/** The full banner: wordmark, bamboo, and the tagline below a rule. */
+export function banner(): string {
+  const rows: string[] = [''];
+  for (let i = 0; i < WORDMARK.length; i++) {
+    rows.push(padTo(`  ${WORDMARK[i] ?? ''}`, 32) + (BAMBOO[i] ?? ''));
+  }
+  rows.push('', '---', `  ${PANDA}  ${TAGLINE}`);
+  return drawBox(rows, BANNER_INNER);
+}
+
+/** A single-box version for terminals too narrow for the full banner. */
+export function compactBanner(): string {
+  return drawBox(['', `  ${PANDA}  shoot   |=|=|=`, `  ${TAGLINE}`, ''], 30);
+}
+
+/**
+ * Pick a banner that fits. Falls back to the compact box on narrow terminals,
+ * because a wrapped banner looks far worse than a small one.
+ */
+export function bannerFor(columns: number | undefined = process.stdout.columns): string {
+  return (columns ?? 80) >= BANNER_MIN_WIDTH ? banner() : compactBanner();
+}
+
 
 /**
  * The mascot framing line. Bold, because it is the one line that must be findable

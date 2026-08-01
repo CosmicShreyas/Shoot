@@ -75,10 +75,30 @@ async function main() {
 
   try {
     // A small real project with a genuinely failing test.
+    //
+    // Every script `shoot init` might configure exists here and actually runs. If the
+    // project declared only `test` but init configured `build` too — which happens the
+    // moment someone types an answer at an interactive prompt — `doctor` would
+    // correctly report a missing script, and that FAIL would land immediately after
+    // "All set". It reads as a broken demo rather than as the tool working, and it
+    // spoils the healthy-doctor beat that the deliberate test failure plays against.
+    //
+    // `lint` is deliberately absent: init leaves it blank, which exercises the
+    // "empty command is skipped, not failed" behaviour worth showing.
     writeFileSync(
       join(dir, 'package.json'),
       `${JSON.stringify(
-        { name: 'demo', version: '1.0.0', type: 'module', scripts: { test: 'node --test' } },
+        {
+          name: 'demo',
+          version: '1.0.0',
+          type: 'module',
+          scripts: {
+            test: 'node --test',
+            // Trivial but real — they exit 0 and cost nothing on camera.
+            typecheck: 'node --check sum.js',
+            build: 'node -e "console.log(\'built\')"',
+          },
+        },
         null,
         2,
       )}\n`,
