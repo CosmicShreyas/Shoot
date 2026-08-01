@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as messages from '../src/mascot/messages.js';
@@ -50,11 +50,9 @@ test('no module builds its own voiced line via prefix()', () => {
 });
 
 test('every exported message is a non-empty string', () => {
-  // Constants, builders, palette controls, and banner helpers - none is "a message".
-  // palette controls, not messages — calling setPalette with a dummy arg would
-  // poison the module's palette state for every test that follows.
-  // Constants, builders, palette controls, and banner helpers — none of these are
+  // Constants, builders, palette controls, and banner helpers — none of these is
   // "a message", and several would misbehave if called with a dummy argument.
+  // (`setPalette('x')` in particular would poison state for every later test.)
   const skip = new Set([
     'PANDA',
     'TAGLINE',
@@ -203,10 +201,25 @@ test('displayWidth counts the panda as two cells', () => {
   assert.equal(messages.displayWidth('  🐼  x'), 7);
 });
 
+/**
+ * Walk up from a starting directory until a directory containing package.json is
+ * found. Counting `..` segments is brittle: it silently depends on whether the test
+ * is running from source or from `dist-tests/`, and on where that output directory
+ * happens to sit.
+ */
+function repoRoot(from: string): string {
+  let dir = from;
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(join(dir, 'package.json'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(`could not locate the repository root from ${from}`);
+}
+
 test('the tagline matches the README, so the two cannot drift', () => {
-  // Two levels up from dist-tests/src reaches the repo root, whether running from
-  // source or from the compiled output.
-  const readme = readFileSync(join(SRC, '..', '..', 'README.md'), 'utf8');
+  const readme = readFileSync(join(repoRoot(SRC), 'README.md'), 'utf8');
   assert.match(
     readme,
     new RegExp(`\\*${messages.TAGLINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*`),
